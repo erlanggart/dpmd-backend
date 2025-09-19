@@ -7,6 +7,7 @@ use App\Models\HeroGallery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class HeroGalleryController extends Controller
 {
@@ -27,7 +28,14 @@ class HeroGalleryController extends Controller
 
     public function store(Request $request)
     {
+        // DEBUG 1: Cek apakah file benar-benar ada di request dan valid
+        if (!$request->hasFile('image') || !$request->file('image')->isValid()) {
+            Log::error('UPLOAD GAGAL: Tidak ada file gambar atau file tidak valid.');
+            return response()->json(['message' => 'Tidak ada file gambar yang valid dalam request.'], 400);
+        }
+
         try {
+            // Validasi request
             $validated = $request->validate([
                 'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
                 'title' => 'nullable|string',
@@ -35,24 +43,42 @@ class HeroGalleryController extends Controller
 
             $file = $request->file('image');
 
-            // HENTIKAN SEMUA PROSES DAN TAMPILKAN INFO FILE DI SINI
-            // dd($file);
+            // Menggunakan disk 'public_uploads' yang menyimpan ke public/uploads
+            $path = $file->store('hero-gallery', 'public_uploads');
 
-            // Kode di bawah ini tidak akan dijalankan untuk sementara
-            $path = $request->file('image')->store('hero-gallery', 'public_uploads');
+            // DEBUG 2: Cek apakah path berhasil dibuat (tidak null atau false)
+            if (!$path) {
+                Log::error('UPLOAD GAGAL: Fungsi store() mengembalikan path yang tidak valid.');
+                return response()->json(['message' => 'Gagal menyimpan file ke disk.'], 500);
+            }
 
             $gallery = HeroGallery::create([
-                // Simpan hanya path relatif di dalam disk
-                'image_path' => $path,
+                'image_path' => $path, // Simpan path relatif: 'hero-gallery/namafile.jpg'
                 'title' => $request->title,
             ]);
 
-            Log::info('Upload berhasil, file disimpan di: ' . $path);
+            Log::info('UPLOAD BERHASIL: File disimpan di disk public_uploads dengan path: ' . $path);
 
             return response()->json($gallery, 201);
+        } catch (ValidationException $e) {
+            // DEBUG 3: Menangkap error validasi secara spesifik
+            Log::error('UPLOAD GAGAL - ERROR VALIDASI: ', $e->errors());
+            // Mengembalikan error 422 dengan detail validasi
+            return response()->json(['message' => 'Data yang diberikan tidak valid.', 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
-            Log::error('GAGAL UPLOAD FILE: ' . $e->getMessage());
-            return response()->json(['message' => 'Terjadi kesalahan saat upload, periksa log.'], 500);
+            // DEBUG 4: Menangkap semua error lainnya, termasuk izin folder
+            $errorMessage = $e->getMessage();
+            $errorCode = $e->getCode();
+
+            Log::error('UPLOAD GAGAL - EXCEPTION UMUM: ' . $errorMessage . ' (Code: ' . $errorCode . ')');
+
+            // Berikan pesan error yang lebih spesifik saat mode debug/local
+            $responseMessage = 'Terjadi kesalahan saat mengupload file.';
+            if (app()->environment('local')) {
+                $responseMessage = $errorMessage;
+            }
+
+            return response()->json(['message' => $responseMessage], 500);
         }
     }
 

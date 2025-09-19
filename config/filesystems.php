@@ -47,10 +47,12 @@ return [
             'report' => false,
         ],
 
+
         'public_uploads' => [
             'driver' => 'local',
-            'root' => public_path('uploads'),
-            'url' => env('APP_URL') . '/uploads',
+            // INI YANG BENAR: Simpan file ke dalam folder storage yang aman
+            'root' => storage_path('app/uploads'),
+            'url' => env('APP_URL') . '/uploads', // Nanti URL ini akan dilayani oleh symlink
             'visibility' => 'public',
         ],
 
