@@ -24,4 +24,9 @@ class Desa extends Model
     {
         return $this->hasMany(AparaturDesa::class);
     }
+
+    public function profil()
+    {
+        return $this->hasOne(ProfilDesa::class);
+    }
 }

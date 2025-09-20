@@ -8,7 +8,9 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\BidangController;
 use App\Http\Controllers\Api\DinasController;
 use App\Http\Controllers\Api\AparaturDesaController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\HeroGalleryController;
+use App\Http\Controllers\Api\ProfilDesaController;
 use Illuminate\Support\Facades\File;
 
 Route::middleware(['auth:sanctum', 'role:superadmin'])->group(function () {
@@ -23,6 +25,12 @@ Route::middleware(['auth:sanctum', 'role:superadmin'])->group(function () {
     Route::apiResource('/dinas', DinasController::class)->only(['index', 'store']);
     Route::apiResource('/aparatur-desa', AparaturDesaController::class)
         ->middleware('role:admin desa|admin kecamatan|superadmin');
+});
+
+Route::middleware(['auth:sanctum', 'role:admin desa'])->group(function () {
+    Route::get('/dashboard/desa', [DashboardController::class, 'desaDashboardData']);
+    Route::get('/profil-desa', [ProfilDesaController::class, 'show']);
+    Route::post('/profil-desa', [ProfilDesaController::class, 'store']);
 });
 
 Route::get('/products', [ProductController::class, 'index']);

@@ -14,34 +14,30 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        // 1. Validasi input
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
         ]);
 
-        // 2. Coba otentikasi user
         if (Auth::attempt($credentials)) {
-            // 3. Jika berhasil, dapatkan user
             $user = Auth::user();
-
-            // 4. Buat token Sanctum
+            $user->load(['desa.kecamatan', 'bidang', 'dinas']);
             $token = $user->createToken('auth_token')->plainTextToken;
 
-            // 5. Kembalikan data user dan token
+            // --- PERUBAHAN DI SINI ---
+            // 1. Ubah objek user menjadi array
+            $userData = $user->toArray();
+            // 2. Tambahkan kunci 'roles' secara manual
+            $userData['roles'] = $user->getRoleNames();
+
             return response()->json([
                 'message' => 'Login berhasil',
                 'access_token' => $token,
                 'token_type' => 'Bearer',
-                'user' => [
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'roles' => $user->getRoleNames() // Mengambil nama peran dari Spatie
-                ]
+                'user' => $userData, // <-- Kirim data yang sudah dimodifikasi
             ]);
         }
 
-        // 6. Jika gagal, kembalikan error
         return response()->json([
             'message' => 'Email atau password salah.'
         ], 401);
