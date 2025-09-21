@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\AparaturDesaController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\HeroGalleryController;
 use App\Http\Controllers\Api\ProfilDesaController;
+use App\Http\Controllers\Api\Desa\ProdukHukumController;
 use Illuminate\Support\Facades\File;
 
 Route::middleware(['auth:sanctum', 'role:superadmin'])->group(function () {
@@ -31,7 +32,10 @@ Route::middleware(['auth:sanctum', 'role:admin desa'])->group(function () {
     Route::get('/dashboard/desa', [DashboardController::class, 'desaDashboardData']);
     Route::get('/profil-desa', [ProfilDesaController::class, 'show']);
     Route::post('/profil-desa', [ProfilDesaController::class, 'store']);
-});
+    Route::apiResource('/produk-hukum', ProdukHukumController::class)->except(['show']);
+    Route::put('/produk-hukum/{id}/status', [ProdukHukumController::class, 'updateStatus']);
+}); // Rute Publik untuk Produk Hukum
+Route::get('/produk-hukum/{produkHukum}', [ProdukHukumController::class, 'show']);
 
 Route::get('/products', [ProductController::class, 'index']);
 Route::post('/login', [AuthController::class, 'login']);
