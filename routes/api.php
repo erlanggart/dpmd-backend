@@ -12,6 +12,9 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\HeroGalleryController;
 use App\Http\Controllers\Api\ProfilDesaController;
 use App\Http\Controllers\Api\Desa\ProdukHukumController;
+use App\Http\Controllers\Api\BumdesController;
+use App\Models\Kecamatan;
+use App\Models\Desa;
 use Illuminate\Support\Facades\File;
 
 Route::middleware(['auth:sanctum', 'role:superadmin'])->group(function () {
@@ -39,7 +42,25 @@ Route::get('/produk-hukum/{produkHukum}', [ProdukHukumController::class, 'show']
 
 Route::get('/products', [ProductController::class, 'index']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login/bidang', [AuthController::class, 'loginBidang']);
 Route::get('/public/hero-gallery', [HeroGalleryController::class, 'publicIndex']);
+
+// Routes untuk Bumdes
+Route::apiResource('/bumdes', BumdesController::class);
+Route::get('/bumdes/search', [BumdesController::class, 'search']);
+Route::post('/login/desa', [BumdesController::class, 'loginByDesa']);
+Route::get('/identitas-bumdes', [BumdesController::class, 'index']); // Untuk mendapatkan data identitas
+
+// Routes untuk data referensi Kecamatan dan Desa
+Route::get('/kecamatans', function () {
+    return response()->json(['data' => Kecamatan::all(['id', 'kode', 'nama'])]);
+});
+Route::get('/desas', function () {
+    return response()->json(['data' => Desa::with('kecamatan:id,nama')->get(['id', 'kecamatan_id', 'kode', 'nama'])]);
+});
+Route::get('/desas/by-kecamatan/{kecamatan_id}', function ($kecamatan_id) {
+    return response()->json(['data' => Desa::where('kecamatan_id', $kecamatan_id)->get(['id', 'kode', 'nama'])]);
+});
 
 
 Route::get('/test-storage', function () {
