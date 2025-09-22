@@ -25,25 +25,39 @@ class WilayahUserSeeder extends Seeder
             // Gabungkan untuk membuat email yang unik
             $email = strtolower("desa.{$desaSlug}.{$kecamatanSlug}@dpmd.com");
 
-            $userDesa = User::create([
-                'name' => 'Admin Desa ' . $desa->nama,
-                'email' => $email, // <-- Gunakan email baru yang unik
-                'password' => Hash::make('password'),
-                'desa_id' => $desa->id,
-            ]);
-            $userDesa->assignRole('admin desa');
+            $userDesa = User::updateOrCreate(
+                ['email' => $email], // Cari berdasarkan email
+                [
+                    'name' => 'Admin Desa ' . $desa->nama,
+                    'password' => Hash::make('password'),
+                    'role' => 'desa', // Role langsung tanpa spatie permission
+                    'desa_id' => $desa->id,
+                ]
+            );
         }
 
         // --- BUAT AKUN ADMIN KECAMATAN ---
         $kecamatans = Kecamatan::all();
         foreach ($kecamatans as $kecamatan) {
-            $userKecamatan = User::create([
-                'name' => 'Admin Kecamatan ' . $kecamatan->nama,
-                'email' => strtolower('kecamatan.' . Str::slug($kecamatan->nama) . '@dpmd.com'),
-                'password' => Hash::make('password'),
-                'kecamatan_id' => $kecamatan->id, // Hubungkan ke ID kecamatan
-            ]);
-            $userKecamatan->assignRole('admin kecamatan');
+            $userKecamatan = User::updateOrCreate(
+                ['email' => strtolower('kecamatan.' . Str::slug($kecamatan->nama) . '@dpmd.com')],
+                [
+                    'name' => 'Admin Kecamatan ' . $kecamatan->nama,
+                    'password' => Hash::make('password'),
+                    'role' => 'kecamatan', // Role langsung tanpa spatie permission
+                    'kecamatan_id' => $kecamatan->id, // Hubungkan ke ID kecamatan
+                ]
+            );
         }
+
+        // --- BUAT AKUN ADMIN DINAS ---
+        $userDinas = User::updateOrCreate(
+            ['email' => 'dinas@dpmd.com'],
+            [
+                'name' => 'Admin Dinas DPMD',
+                'password' => Hash::make('password'),
+                'role' => 'dinas', // Role untuk admin dinas
+            ]
+        );
     }
 }

@@ -17,32 +17,32 @@ class BidangUserSeeder extends Seeder
         $bidangUsers = [
             [
                 'name' => 'Admin Sekretariat',
-                'email' => 'sekretariat@dpmd.gov.id',
-                'password' => Hash::make('password123'),
+                'email' => 'sekretariat@dpmd.com',
+                'password' => Hash::make('password'),
                 'role' => 'sekretariat',
             ],
             [
                 'name' => 'Admin Sarana Prasarana',
-                'email' => 'sarana@dpmd.gov.id',
-                'password' => Hash::make('password123'),
+                'email' => 'sarana@dpmd.com',
+                'password' => Hash::make('password'),
                 'role' => 'sarana_prasarana',
             ],
             [
                 'name' => 'Admin Kekayaan Keuangan',
-                'email' => 'keuangan@dpmd.gov.id',
-                'password' => Hash::make('password123'),
+                'email' => 'keuangan@dpmd.com',
+                'password' => Hash::make('password'),
                 'role' => 'kekayaan_keuangan',
             ],
             [
                 'name' => 'Admin Pemberdayaan Masyarakat',
-                'email' => 'pemberdayaan@dpmd.gov.id',
-                'password' => Hash::make('password123'),
+                'email' => 'pemberdayaan@dpmd.com',
+                'password' => Hash::make('password'),
                 'role' => 'pemberdayaan_masyarakat',
             ],
             [
                 'name' => 'Admin Pemerintahan Desa',
-                'email' => 'pemerintahan@dpmd.gov.id',
-                'password' => Hash::make('password123'),
+                'email' => 'pemerintahan@dpmd.com',
+                'password' => Hash::make('password'),
                 'role' => 'pemerintahan_desa',
             ],
         ];
