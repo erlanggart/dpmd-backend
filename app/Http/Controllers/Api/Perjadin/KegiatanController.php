@@ -220,4 +220,68 @@ class KegiatanController extends Controller
         $writer->save('php://output');
         exit;
     }
+
+    public function checkPersonnelConflict(Request $request)
+    {
+        $personnelName = $request->query('personnel_name');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+        $excludeId = $request->query('exclude_id');
+
+        if (!$personnelName || !$startDate || !$endDate) {
+            return response()->json([
+                'conflicts' => [],
+                'message' => 'Parameter tidak lengkap'
+            ], 400);
+        }
+
+        try {
+            $query = Kegiatan::with('details.bidang')
+                ->whereHas('details', function ($q) use ($personnelName) {
+                    $q->where('personil', 'like', '%' . $personnelName . '%');
+                })
+                ->where(function ($q) use ($startDate, $endDate) {
+                    // Cek overlap tanggal
+                    $q->where(function ($subQuery) use ($startDate, $endDate) {
+                        // Kegiatan yang dimulai di antara periode yang akan dijadwalkan
+                        $subQuery->whereBetween('tanggal_mulai', [$startDate, $endDate])
+                            // Kegiatan yang berakhir di antara periode yang akan dijadwalkan
+                            ->orWhereBetween('tanggal_selesai', [$startDate, $endDate])
+                            // Kegiatan yang mencakup seluruh periode yang akan dijadwalkan
+                            ->orWhere(function ($innerQuery) use ($startDate, $endDate) {
+                                $innerQuery->where('tanggal_mulai', '<=', $startDate)
+                                          ->where('tanggal_selesai', '>=', $endDate);
+                            });
+                    });
+                });
+
+            // Exclude kegiatan yang sedang di-edit (untuk update)
+            if ($excludeId) {
+                $query->where('id_kegiatan', '!=', $excludeId);
+            }
+
+            $conflicts = $query->get()->map(function ($kegiatan) {
+                return [
+                    'id_kegiatan' => $kegiatan->id_kegiatan,
+                    'nama_kegiatan' => $kegiatan->nama_kegiatan,
+                    'nomor_sp' => $kegiatan->nomor_sp,
+                    'tanggal_mulai' => $kegiatan->tanggal_mulai,
+                    'tanggal_selesai' => $kegiatan->tanggal_selesai,
+                    'lokasi' => $kegiatan->lokasi,
+                ];
+            });
+
+            return response()->json([
+                'conflicts' => $conflicts,
+                'total_conflicts' => $conflicts->count(),
+                'message' => $conflicts->count() > 0 ? 'Ditemukan konflik jadwal' : 'Tidak ada konflik jadwal'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'conflicts' => [],
+                'message' => 'Gagal mengecek konflik: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

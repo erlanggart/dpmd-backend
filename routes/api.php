@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\Perjadin\KegiatanController as PerjadinKegiatanCont
 use App\Http\Controllers\Api\Perjadin\DashboardController as PerjadinDashboardController;
 use App\Http\Controllers\Api\Perjadin\BidangController as PerjadinBidangController;
 use App\Http\Controllers\Api\Perjadin\PersonilController as PerjadinPersonilController;
+use App\Http\Controllers\Api\Perjadin\StatistikController as PerjadinStatistikController;
 use App\Models\Kecamatan;
 use App\Models\Desa;
 use Illuminate\Support\Facades\File;
@@ -65,16 +66,21 @@ Route::post('/login/desa', [BumdesController::class, 'loginByDesa']);
 Route::get('/identitas-bumdes', [BumdesController::class, 'index']); // Untuk mendapatkan data identitas
 
 // Routes untuk Perjalanan Dinas (dengan auth untuk superadmin dan admin bidang)
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::prefix('perjadin')->group(function () {
     Route::get('/dashboard', [PerjadinDashboardController::class, 'index']);
     Route::get('/dashboard/weekly-schedule', [PerjadinDashboardController::class, 'weeklySchedule']);
-    Route::get('/bidang', [PerjadinBidangController::class, 'index']);
-    Route::get('/personil/{bidang_id}', [PerjadinPersonilController::class, 'getByBidang']);
-    Route::apiResource('/kegiatan', PerjadinKegiatanController::class);
+    Route::get('/statistik-perjadin', [PerjadinStatistikController::class, 'getStatistikPerjadin']);
+    
+    Route::middleware(['auth:sanctum'])->group(function () {
+        Route::get('/bidang', [PerjadinBidangController::class, 'index']);
+        Route::get('/personil/{bidang_id}', [PerjadinPersonilController::class, 'getByBidang']);
+        Route::apiResource('/kegiatan', PerjadinKegiatanController::class);
+        Route::get('/check-personnel-conflict', [PerjadinKegiatanController::class, 'checkPersonnelConflict']);
+    });
 });
 
 // Routes yang memerlukan role khusus
-Route::middleware(['auth:sanctum', 'role:superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa'])->group(function () {
+Route::prefix('perjadin')->middleware(['auth:sanctum', 'role:superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa'])->group(function () {
     Route::get('/kegiatan/export-excel', [PerjadinKegiatanController::class, 'exportExcel']);
 });
 
