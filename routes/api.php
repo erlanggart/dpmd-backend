@@ -7,11 +7,11 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\BidangController;
 use App\Http\Controllers\Api\DinasController;
-use App\Http\Controllers\Api\AparaturDesaController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\HeroGalleryController;
 use App\Http\Controllers\Api\ProfilDesaController;
 use App\Http\Controllers\Api\Desa\ProdukHukumController;
+
 use App\Http\Controllers\Api\BumdesController;
 use App\Http\Controllers\Api\Perjadin\KegiatanController as PerjadinKegiatanController;
 use App\Http\Controllers\Api\Perjadin\DashboardController as PerjadinDashboardController;
@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\Perjadin\PersonilController as PerjadinPersonilCont
 use App\Http\Controllers\Api\Perjadin\StatistikController as PerjadinStatistikController;
 use App\Models\Kecamatan;
 use App\Models\Desa;
+
 use Illuminate\Support\Facades\File;
 
 Route::middleware(['auth:sanctum', 'role:superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa'])->group(function () {
@@ -32,9 +33,6 @@ Route::middleware(['auth:sanctum', 'role:superadmin|sekretariat|sarana_prasarana
     // Routes untuk CRUD Bidang & Dinas
     Route::apiResource('/bidangs', BidangController::class)->only(['index', 'store']);
     Route::apiResource('/dinas', DinasController::class)->only(['index', 'store']);
-    Route::apiResource('/aparatur-desa', AparaturDesaController::class)
-        ->middleware('role:desa|kecamatan|superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa');
-});
 
 Route::middleware(['auth:sanctum', 'role:desa|superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa'])->group(function () {
     Route::get('/dashboard/desa', [DashboardController::class, 'desaDashboardData']);
@@ -121,4 +119,18 @@ Route::get('/test-storage', function () {
         // Jika gagal, tampilkan pesan error yang sebenarnya
         return "KESIMPULAN: GAGAL. Pesan Error: " . $e->getMessage();
     }
+});
+
+Route::middleware(['auth:sanctum', 'role:desa'])->prefix('desa')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::apiResource('/profil-desa', ProfilDesaController::class)->only(['index', 'store']);
+    Route::apiResource('/produk-hukum', ProdukHukumController::class);
+    Route::post('/produk-hukum/{id}', [ProdukHukumController::class, 'update']);
+    Route::put('/produk-hukum/status/{id}', [ProdukHukumController::class, 'updateStatus']);
+    Route::apiResource('/aparatur-desa', AparaturDesaController::class);
+    Route::post('/aparatur-desa/{id}', [AparaturDesaController::class, 'update']);
+});
+
+Route::get('/', function () {
+    return response()->json(['message' => 'API is running']);
 });
