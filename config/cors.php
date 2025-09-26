@@ -23,6 +23,10 @@ return [
         'http://dpmd.test',
         'http://localhost:5173',
         'http://dpmdbogorkab.id',
+        'http://dpmdbogorkab.id',
+        'https://dpmdbogorkab.id', // <-- TAMBAHKAN INI
+        'http://www.dpmdbogorkab.id',
+        'https://www.dpmdbogorkab.id',
 
     ],
 
