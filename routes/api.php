@@ -33,6 +33,7 @@ Route::middleware(['auth:sanctum', 'role:superadmin|sekretariat|sarana_prasarana
     // Routes untuk CRUD Bidang & Dinas
     Route::apiResource('/bidangs', BidangController::class)->only(['index', 'store']);
     Route::apiResource('/dinas', DinasController::class)->only(['index', 'store']);
+}); // <-- Missing closing brace for previous middleware group
 
 Route::middleware(['auth:sanctum', 'role:desa|superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa'])->group(function () {
     Route::get('/dashboard/desa', [DashboardController::class, 'desaDashboardData']);
@@ -57,42 +58,41 @@ Route::middleware(['auth:sanctum'])->get('/me', function (Request $request) {
 // Routes dengan autentikasi
 Route::middleware(['auth:sanctum'])->group(function () {
 
-// Routes untuk Bumdes
-Route::apiResource('/bumdes', BumdesController::class);
-Route::get('/bumdes/search', [BumdesController::class, 'search']);
-Route::post('/login/desa', [BumdesController::class, 'loginByDesa']);
-Route::get('/identitas-bumdes', [BumdesController::class, 'index']); // Untuk mendapatkan data identitas
+    // Routes untuk Bumdes
+    Route::apiResource('/bumdes', BumdesController::class);
+    Route::get('/bumdes/search', [BumdesController::class, 'search']);
+    Route::post('/login/desa', [BumdesController::class, 'loginByDesa']);
+    Route::get('/identitas-bumdes', [BumdesController::class, 'index']); // Untuk mendapatkan data identitas
 
-// Routes untuk Perjalanan Dinas (dengan auth untuk superadmin dan admin bidang)
-Route::prefix('perjadin')->group(function () {
-    Route::get('/dashboard', [PerjadinDashboardController::class, 'index']);
-    Route::get('/dashboard/weekly-schedule', [PerjadinDashboardController::class, 'weeklySchedule']);
-    Route::get('/statistik-perjadin', [PerjadinStatistikController::class, 'getStatistikPerjadin']);
-    
-    Route::middleware(['auth:sanctum'])->group(function () {
-        Route::get('/bidang', [PerjadinBidangController::class, 'index']);
-        Route::get('/personil/{bidang_id}', [PerjadinPersonilController::class, 'getByBidang']);
-        Route::apiResource('/kegiatan', PerjadinKegiatanController::class);
-        Route::get('/check-personnel-conflict', [PerjadinKegiatanController::class, 'checkPersonnelConflict']);
+    // Routes untuk Perjalanan Dinas (dengan auth untuk superadmin dan admin bidang)
+    Route::prefix('perjadin')->group(function () {
+        Route::get('/dashboard', [PerjadinDashboardController::class, 'index']);
+        Route::get('/dashboard/weekly-schedule', [PerjadinDashboardController::class, 'weeklySchedule']);
+        Route::get('/statistik-perjadin', [PerjadinStatistikController::class, 'getStatistikPerjadin']);
+
+        Route::middleware(['auth:sanctum'])->group(function () {
+            Route::get('/bidang', [PerjadinBidangController::class, 'index']);
+            Route::get('/personil/{bidang_id}', [PerjadinPersonilController::class, 'getByBidang']);
+            Route::apiResource('/kegiatan', PerjadinKegiatanController::class);
+            Route::get('/check-personnel-conflict', [PerjadinKegiatanController::class, 'checkPersonnelConflict']);
+        });
     });
-});
 
-// Routes yang memerlukan role khusus
-Route::prefix('perjadin')->middleware(['auth:sanctum', 'role:superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa'])->group(function () {
-    Route::get('/kegiatan/export-excel', [PerjadinKegiatanController::class, 'exportExcel']);
-});
+    // Routes yang memerlukan role khusus
+    Route::prefix('perjadin')->middleware(['auth:sanctum', 'role:superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa'])->group(function () {
+        Route::get('/kegiatan/export-excel', [PerjadinKegiatanController::class, 'exportExcel']);
+    });
 
-// Routes untuk data referensi Kecamatan dan Desa
-Route::get('/kecamatans', function () {
-    return response()->json(['data' => Kecamatan::all(['id', 'kode', 'nama'])]);
-});
-Route::get('/desas', function () {
-    return response()->json(['data' => Desa::with('kecamatan:id,nama')->get(['id', 'kecamatan_id', 'kode', 'nama'])]);
-});
-Route::get('/desas/by-kecamatan/{kecamatan_id}', function ($kecamatan_id) {
-    return response()->json(['data' => Desa::where('kecamatan_id', $kecamatan_id)->get(['id', 'kode', 'nama'])]);
-});
-
+    // Routes untuk data referensi Kecamatan dan Desa
+    Route::get('/kecamatans', function () {
+        return response()->json(['data' => Kecamatan::all(['id', 'kode', 'nama'])]);
+    });
+    Route::get('/desas', function () {
+        return response()->json(['data' => Desa::with('kecamatan:id,nama')->get(['id', 'kecamatan_id', 'kode', 'nama'])]);
+    });
+    Route::get('/desas/by-kecamatan/{kecamatan_id}', function ($kecamatan_id) {
+        return response()->json(['data' => Desa::where('kecamatan_id', $kecamatan_id)->get(['id', 'kode', 'nama'])]);
+    });
 }); // End of auth:sanctum middleware group
 
 Route::get('/test-storage', function () {
@@ -127,8 +127,6 @@ Route::middleware(['auth:sanctum', 'role:desa'])->prefix('desa')->group(function
     Route::apiResource('/produk-hukum', ProdukHukumController::class);
     Route::post('/produk-hukum/{id}', [ProdukHukumController::class, 'update']);
     Route::put('/produk-hukum/status/{id}', [ProdukHukumController::class, 'updateStatus']);
-    Route::apiResource('/aparatur-desa', AparaturDesaController::class);
-    Route::post('/aparatur-desa/{id}', [AparaturDesaController::class, 'update']);
 });
 
 Route::get('/', function () {
