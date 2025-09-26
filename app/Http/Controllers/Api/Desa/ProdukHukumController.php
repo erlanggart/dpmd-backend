@@ -16,7 +16,7 @@ class ProdukHukumController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $query = ProdukHukum::where('desa_id', $user->desa_id);
+        $query = ProdukHukum::with('desa.kecamatan')->where('desa_id', $user->desa_id);
 
         // Cek jika ada parameter pencarian 'search'
         if ($request->has('search') && $request->search != '') {
@@ -24,7 +24,7 @@ class ProdukHukumController extends Controller
             $query->where('judul', 'like', '%' . $searchTerm . '%');
         }
 
-        $produkHukums = $query->latest()->paginate(10);
+        $produkHukums = $query->latest()->paginate(12);
 
         return response()->json([
             'success' => true,
@@ -90,7 +90,7 @@ class ProdukHukumController extends Controller
      */
     public function show($id)
     {
-        $produkHukum = ProdukHukum::find($id);
+        $produkHukum = ProdukHukum::with('desa.kecamatan')->find($id);
 
         if ($produkHukum) {
             return response()->json([

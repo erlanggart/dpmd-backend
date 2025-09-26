@@ -7,11 +7,11 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\BidangController;
 use App\Http\Controllers\Api\DinasController;
-use App\Http\Controllers\Api\AparaturDesaController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\HeroGalleryController;
 use App\Http\Controllers\Api\ProfilDesaController;
 use App\Http\Controllers\Api\Desa\ProdukHukumController;
+use App\Http\Controllers\Api\Desa\AparaturDesaController;
 use Illuminate\Support\Facades\File;
 
 Route::middleware(['auth:sanctum', 'role:superadmin'])->group(function () {
@@ -24,8 +24,6 @@ Route::middleware(['auth:sanctum', 'role:superadmin'])->group(function () {
     // Routes untuk CRUD Bidang & Dinas
     Route::apiResource('/bidangs', BidangController::class)->only(['index', 'store']);
     Route::apiResource('/dinas', DinasController::class)->only(['index', 'store']);
-    Route::apiResource('/aparatur-desa', AparaturDesaController::class)
-        ->middleware('role:admin desa|admin kecamatan|superadmin');
 });
 
 Route::middleware(['auth:sanctum', 'role:admin desa'])->group(function () {
@@ -66,4 +64,18 @@ Route::get('/test-storage', function () {
         // Jika gagal, tampilkan pesan error yang sebenarnya
         return "KESIMPULAN: GAGAL. Pesan Error: " . $e->getMessage();
     }
+});
+
+Route::middleware(['auth:sanctum', 'role:desa'])->prefix('desa')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::apiResource('/profil-desa', ProfilDesaController::class)->only(['index', 'store']);
+    Route::apiResource('/produk-hukum', ProdukHukumController::class);
+    Route::post('/produk-hukum/{id}', [ProdukHukumController::class, 'update']);
+    Route::put('/produk-hukum/status/{id}', [ProdukHukumController::class, 'updateStatus']);
+    Route::apiResource('/aparatur-desa', AparaturDesaController::class);
+    Route::post('/aparatur-desa/{id}', [AparaturDesaController::class, 'update']);
+});
+
+Route::get('/', function () {
+    return response()->json(['message' => 'API is running']);
 });
