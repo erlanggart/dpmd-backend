@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
             MasterDataSeeder::class, // <-- Panggil ini dulu
             UserSeeder::class,
             WilayahUserSeeder::class,
+            BidangUserSeeder::class,
+            DisposisiUserSeeder::class, // <-- Seeder untuk akun disposisi
         ]);
     }
 }

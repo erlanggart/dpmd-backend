@@ -22,6 +22,7 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($credentials)) {
+            /** @var \App\Models\User $user */
             $user = Auth::user();
             
             // Load relationships jika ada
@@ -36,13 +37,27 @@ class AuthController extends Controller
             // Konversi user ke array
             $userData = $user->toArray();
             
-            // Tambahkan roles
-            try {
-                $userData['roles'] = $user->getRoleNames()->toArray();
-            } catch (\Exception $e) {
-                // Fallback jika tidak menggunakan Spatie
-                $userData['roles'] = [$user->role ?? 'user'];
+            // Tentukan roles berdasarkan jenis user
+            $roles = [];
+            $bidangRoles = ['sekretariat', 'sarana_prasarana', 'kekayaan_keuangan', 'pemberdayaan_masyarakat', 'pemerintahan_desa'];
+            
+            if ($user->role === 'superadmin') {
+                $roles = ['superadmin'];
+                // Superadmin tidak memiliki bidangRole
+            } else if (in_array($user->role, $bidangRoles)) {
+                $roles = [$user->role]; // Gunakan role bidang spesifik langsung
+                $userData['bidangRole'] = $user->role; // Simpan role bidang spesifik
+            } else if ($user->role === 'desa') {
+                $roles = ['desa'];
+            } else if ($user->role === 'kecamatan') {
+                $roles = ['kecamatan'];
+            } else if ($user->role === 'dinas') {
+                $roles = ['dinas'];
+            } else {
+                $roles = [$user->role ?? 'user'];
             }
+            
+            $userData['roles'] = $roles;
 
             return response()->json([
                 'message' => 'Login berhasil',
@@ -68,6 +83,7 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($credentials)) {
+            /** @var \App\Models\User $user */
             $user = Auth::user();
             
             // Check if user has a valid bidang role

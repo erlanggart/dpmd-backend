@@ -10,10 +10,40 @@ class ProfilDesaController extends Controller
     // Mengambil data profil desa milik user yang login
     public function show()
     {
-        $desa = auth()->user()->desa;
-        // findOrNew mengembalikan profil yang ada atau objek baru jika belum ada
-        $profil = $desa->profil()->firstOrNew([]);
-        return response()->json($profil);
+        $user = auth()->user();
+        
+        // Jika user adalah desa, ambil profil desa mereka
+        if ($user->role === 'desa' && $user->desa) {
+            $desa = $user->desa;
+            $profil = $desa->profil()->firstOrNew([]);
+            return response()->json($profil);
+        }
+        
+        // Jika user adalah admin, return data kosong atau template
+        if (in_array($user->role, ['superadmin', 'sekretariat', 'sarana_prasarana', 'kekayaan_keuangan', 'pemberdayaan_masyarakat', 'pemerintahan_desa'])) {
+            return response()->json([
+                'klasifikasi_desa' => null,
+                'status_desa' => null,
+                'tipologi_desa' => null,
+                'jumlah_penduduk' => null,
+                'sejarah_desa' => null,
+                'demografi' => null,
+                'potensi_desa' => null,
+                'no_telp' => null,
+                'email' => null,
+                'instagram_url' => null,
+                'youtube_url' => null,
+                'luas_wilayah' => null,
+                'alamat_kantor' => null,
+                'radius_ke_kecamatan' => null,
+                'latitude' => null,
+                'longitude' => null,
+                'foto_kantor_desa_path' => null,
+                'message' => 'Admin view - select desa to edit profil'
+            ]);
+        }
+        
+        return response()->json(['message' => 'No desa associated with this user'], 404);
     }
 
     // Menyimpan atau memperbarui data profil desa
@@ -39,7 +69,15 @@ class ProfilDesaController extends Controller
             'longitude' => 'nullable|numeric',
         ]);
 
-        $desa = auth()->user()->desa;
+        $user = auth()->user();
+        
+        // Untuk admin yang tidak punya relasi desa, ambil desa_id dari request
+        if ($user->role === 'superadmin' || $user->role === 'admin' || str_contains($user->role, 'bidang')) {
+            $validated['desa_id'] = $request->desa_id; // pastikan desa_id dikirim dari frontend
+            $desa = \App\Models\Desa::findOrFail($request->desa_id);
+        } else {
+            $desa = $user->desa;
+        }
 
         if ($request->hasFile('foto_kantor_desa')) {
             // Validasi file secara terpisah jika ada

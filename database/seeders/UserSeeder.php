@@ -17,25 +17,25 @@ class UserSeeder extends Seeder
         $superadmin = User::create([
             'name' => 'Super Admin',
             'email' => 'superadmin@dpmd.com',
-            'password' => Hash::make('password')
+            'password' => Hash::make('password'),
+            'role' => 'superadmin'
         ]);
-        $superadmin->assignRole('superadmin');
 
         // 2. Admin Bidang
         $adminBidang = User::create([
             'name' => 'Admin Bidang Pemberdayaan',
             'email' => 'bidang@dpmd.com',
-            'password' => Hash::make('password')
+            'password' => Hash::make('password'),
+            'role' => 'pemberdayaan_masyarakat'
         ]);
-        $adminBidang->assignRole('admin bidang');
 
 
         // 5. Admin Dinas Terkait
         $adminDinas = User::create([
             'name' => 'Admin Dinas Kominfo',
             'email' => 'dinas@dpmd.com',
-            'password' => Hash::make('password')
+            'password' => Hash::make('password'),
+            'role' => 'dinas'
         ]);
-        $adminDinas->assignRole('admin dinas');
     }
 }
