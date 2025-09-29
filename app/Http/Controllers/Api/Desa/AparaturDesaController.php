@@ -17,29 +17,29 @@ class AparaturDesaController extends Controller
      */
     public function index()
     {
-        // Temporary debugging
-        if (auth()->check()) {
-            Log::info('Authenticated user:', ['id' => auth()->id(), 'name' => auth()->user()->name]);
-            Log::info('User roles:', ['roles' => auth()->user()->getRoleNames()]);
-        } else {
-            Log::warning('No authenticated user found.');
-        }
+        // // Temporary debugging
+        // if (auth()->check()) {
+        //     Log::info('Authenticated user:', ['id' => auth()->id(), 'name' => auth()->user()->name]);
+        //     Log::info('User roles:', ['roles' => auth()->user()->getRoleNames()]);
+        // } else {
+        //     Log::warning('No authenticated user found.');
+        // }
 
-        $user = auth()->user();
-        $query = AparaturDesa::with('desa', 'produkHukum')->where('desa_id', $user->desa_id);
+        // $user = auth()->user();
+        // $query = AparaturDesa::with('desa', 'produkHukum')->where('desa_id', $user->desa_id);
 
-        if ($request->has('search') && $request->search != '') {
-            $query->where('nama_lengkap', 'like', '%' . $request->search . '%')
-                ->orWhere('jabatan', 'like', '%' . $request->search . '%');
-        }
+        // if ($request->has('search') && $request->search != '') {
+        //     $query->where('nama_lengkap', 'like', '%' . $request->search . '%')
+        //         ->orWhere('jabatan', 'like', '%' . $request->search . '%');
+        // }
 
-        $aparatur = $query->latest()->paginate(10);
+        // $aparatur = $query->latest()->paginate(10);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Daftar Aparatur Desa',
-            'data' => $aparatur
-        ]);
+        // return response()->json([
+        //     'success' => true,
+        //     'message' => 'Daftar Aparatur Desa',
+        //     'data' => $aparatur
+        // ]);
     }
 
 
