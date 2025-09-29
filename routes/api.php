@@ -266,6 +266,7 @@ Route::middleware(['auth:sanctum', 'role:desa'])->prefix('desa')->group(function
 Route::prefix('musdesus')->group(function () {
     Route::get('/kecamatan', [App\Http\Controllers\Api\MusdesusController::class, 'getKecamatan']);
     Route::get('/desa/{kecamatan_id}', [App\Http\Controllers\Api\MusdesusController::class, 'getDesaByKecamatan']);
+    Route::get('/check-desa/{desa_id}', [App\Http\Controllers\Api\MusdesusController::class, 'checkDesaUploadStatus']);
     Route::post('/upload', [App\Http\Controllers\Api\MusdesusController::class, 'store']);
     Route::get('/download/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'download']);
 });
