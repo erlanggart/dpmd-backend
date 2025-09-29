@@ -19,4 +19,9 @@ class Kecamatan extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    public function musdesus()
+    {
+        return $this->hasManyThrough(Musdesus::class, Desa::class);
+    }
 }

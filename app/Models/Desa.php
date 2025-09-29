@@ -29,4 +29,9 @@ class Desa extends Model
     {
         return $this->hasOne(ProfilDesa::class);
     }
+
+    public function musdesus()
+    {
+        return $this->hasMany(Musdesus::class);
+    }
 }

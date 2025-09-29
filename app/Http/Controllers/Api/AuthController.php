@@ -141,4 +141,47 @@ class AuthController extends Controller
         
         return response()->json($user);
     }
+
+    /**
+     * Verify admin credentials for secure operations.
+     */
+    public function verifyAdminLogin(Request $request)
+    {
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+        ]);
+
+        // Check if user exists and password is correct
+        $user = User::where('email', $credentials['email'])->first();
+        
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email atau password salah.'
+            ], 401);
+        }
+
+        // Check if user has admin privileges
+        $adminRoles = ['superadmin', 'sekretariat', 'sarana_prasarana', 'kekayaan_keuangan', 'pemberdayaan_masyarakat', 'pemerintahan_desa'];
+        
+        if (!in_array($user->role, $adminRoles)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak. Akun ini tidak memiliki hak admin.'
+            ], 403);
+        }
+
+        // Return success response
+        return response()->json([
+            'success' => true,
+            'message' => 'Verifikasi admin berhasil.',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+            ]
+        ]);
+    }
 }
