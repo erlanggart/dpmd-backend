@@ -14,10 +14,17 @@ class HeroGalleryController extends Controller
     // Method untuk landing page (publik)
     public function publicIndex()
     {
-        return HeroGallery::where('is_active', true)
-            ->orderBy('order')
-            ->limit(6) // Batasi maksimal 6 foto
-            ->get();
+        try {
+            $galleries = HeroGallery::where('is_active', true)
+                ->orderBy('order')
+                ->limit(6) // Batasi maksimal 6 foto
+                ->get();
+            
+            return response()->json($galleries);
+        } catch (\Exception $e) {
+            // Jika ada error, return array kosong agar frontend tidak error
+            return response()->json([]);
+        }
     }
 
     // Method untuk halaman admin (terlindungi)
