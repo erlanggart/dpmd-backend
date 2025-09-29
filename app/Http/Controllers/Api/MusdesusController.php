@@ -58,6 +58,45 @@ class MusdesusController extends Controller
     }
 
     /**
+     * Check if desa already uploaded files
+     */
+    public function checkDesaUploadStatus($desaId)
+    {
+        try {
+            $existingUpload = Musdesus::where('desa_id', $desaId)->first();
+            
+            if ($existingUpload) {
+                $desaName = Desa::find($desaId)->nama;
+                $filesCount = Musdesus::where('desa_id', $desaId)->count();
+                
+                return response()->json([
+                    'success' => true,
+                    'already_uploaded' => true,
+                    'message' => "Desa {$desaName} sudah pernah melakukan upload sebelumnya.",
+                    'upload_info' => [
+                        'upload_date' => $existingUpload->created_at->format('d M Y H:i'),
+                        'uploader_name' => $existingUpload->nama_pengupload,
+                        'files_count' => $filesCount,
+                        'desa_name' => $desaName
+                    ]
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'already_uploaded' => false,
+                'message' => 'Desa belum pernah upload, dapat melakukan upload.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengecek status upload desa',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index()
@@ -97,6 +136,21 @@ class MusdesusController extends Controller
                 'files' => 'required|array|min:1',
                 'files.*' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240' // max 10MB per file
             ]);
+
+            // Check if desa already has uploaded files
+            $existingUpload = Musdesus::where('desa_id', $request->desa_id)->first();
+            if ($existingUpload) {
+                $desaName = Desa::find($request->desa_id)->nama;
+                return response()->json([
+                    'success' => false,
+                    'message' => "Desa {$desaName} sudah pernah melakukan upload sebelumnya. Satu desa hanya dapat upload satu kali.",
+                    'existing_upload' => [
+                        'upload_date' => $existingUpload->created_at->format('d M Y H:i'),
+                        'uploader_name' => $existingUpload->nama_pengupload,
+                        'files_count' => Musdesus::where('desa_id', $request->desa_id)->count()
+                    ]
+                ], 422);
+            }
 
             // Create directory if not exists
             $uploadPath = 'musdesus';
