@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\HeroGalleryController;
 use App\Http\Controllers\Api\ProfilDesaController;
 use App\Http\Controllers\Api\Desa\ProdukHukumController;
 use App\Http\Controllers\Api\Desa\AparaturDesaController;
+use App\Http\Controllers\Api\FaceRecognitionController;
+use App\Http\Controllers\Api\HealthController;
 
 use App\Http\Controllers\Api\BumdesController;
 use App\Http\Controllers\Api\Perjadin\KegiatanController as PerjadinKegiatanController;
@@ -49,6 +51,24 @@ Route::get('/products', [ProductController::class, 'index']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/login/bidang', [AuthController::class, 'loginBidang']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+
+// Health Check Routes
+Route::get('/health', [HealthController::class, 'check']);
+Route::get('/health/info', [HealthController::class, 'info']);
+Route::get('/health/face-id', [HealthController::class, 'faceIdStatus']);
+
+// Face Recognition Routes
+Route::post('/face/login', [FaceRecognitionController::class, 'faceLogin']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/face/register', [FaceRecognitionController::class, 'registerFace']);
+    Route::get('/face/status', [FaceRecognitionController::class, 'getFaceStatus']);
+    Route::delete('/face/data', [FaceRecognitionController::class, 'deleteFaceData']);
+    
+    // Admin only routes
+    Route::middleware('role:superadmin|sekretariat')->group(function () {
+        Route::post('/face/verify/{userId}', [FaceRecognitionController::class, 'verifyFaceData']);
+    });
+});
 
 // Admin verification endpoint for secure delete operations
 Route::post('/admin/verify-login', [AuthController::class, 'verifyAdminLogin']);
@@ -272,6 +292,8 @@ Route::prefix('musdesus')->group(function () {
     Route::get('/check-desa/{desa_id}', [App\Http\Controllers\Api\MusdesusController::class, 'checkDesaUploadStatus']);
     Route::post('/upload', [App\Http\Controllers\Api\MusdesusController::class, 'store']);
     Route::get('/download/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'download']);
+    Route::get('/view/{filename}', [App\Http\Controllers\Api\MusdesusController::class, 'viewFile']);
+    Route::get('/download-file/{filename}', [App\Http\Controllers\Api\MusdesusController::class, 'downloadByFilename']);
 });
 
 // Routes untuk admin musdesus (perlu auth)

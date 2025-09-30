@@ -314,6 +314,65 @@ class MusdesusController extends Controller
     }
 
     /**
+     * View/Preview file by filename
+     */
+    public function viewFile(string $filename)
+    {
+        try {
+            $musdesus = Musdesus::where('nama_file', $filename)->firstOrFail();
+            
+            $filePath = storage_path('app/public/' . $musdesus->path_file);
+            
+            if (!file_exists($filePath)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File tidak ditemukan'
+                ], 404);
+            }
+
+            $mimeType = mime_content_type($filePath);
+            
+            return response()->file($filePath, [
+                'Content-Type' => $mimeType,
+                'Content-Disposition' => 'inline; filename="' . $musdesus->nama_file_asli . '"'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menampilkan file',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Download file by filename  
+     */
+    public function downloadByFilename(string $filename)
+    {
+        try {
+            $musdesus = Musdesus::where('nama_file', $filename)->firstOrFail();
+            
+            $filePath = storage_path('app/public/' . $musdesus->path_file);
+            
+            if (!file_exists($filePath)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File tidak ditemukan'
+                ], 404);
+            }
+
+            return response()->download($filePath, $musdesus->nama_file_asli);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mendownload file',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Secure destroy - for public stats page with admin verification
      */
     public function secureDestroy(Request $request, string $id)
