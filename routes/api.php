@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\HeroGalleryController;
 use App\Http\Controllers\Api\ProfilDesaController;
 use App\Http\Controllers\Api\Desa\ProdukHukumController;
+use App\Http\Controllers\Api\Desa\AparaturDesaController;
 
 use App\Http\Controllers\Api\BumdesController;
 use App\Http\Controllers\Api\Perjadin\KegiatanController as PerjadinKegiatanController;
@@ -260,6 +261,8 @@ Route::middleware(['auth:sanctum', 'role:desa'])->prefix('desa')->group(function
     Route::apiResource('/produk-hukum', ProdukHukumController::class);
     Route::post('/produk-hukum/{id}', [ProdukHukumController::class, 'update']);
     Route::put('/produk-hukum/status/{id}', [ProdukHukumController::class, 'updateStatus']);
+    Route::apiResource('/aparatur-desa', AparaturDesaController::class);
+    Route::post('/aparatur-desa/{id}', [AparaturDesaController::class, 'update']);
 });
 
 // Routes untuk Musdesus (Public - tidak perlu auth)
