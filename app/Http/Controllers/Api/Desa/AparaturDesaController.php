@@ -9,37 +9,32 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 class AparaturDesaController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // // Temporary debugging
-        // if (auth()->check()) {
-        //     Log::info('Authenticated user:', ['id' => auth()->id(), 'name' => auth()->user()->name]);
-        //     Log::info('User roles:', ['roles' => auth()->user()->getRoleNames()]);
-        // } else {
-        //     Log::warning('No authenticated user found.');
-        // }
+        $user = $request->user();
+        $query = AparaturDesa::with('desa', 'produkHukum')->where('desa_id', $user->desa_id);
 
-        // $user = auth()->user();
-        // $query = AparaturDesa::with('desa', 'produkHukum')->where('desa_id', $user->desa_id);
+        if ($request->has('search') && $request->search != '') {
+            $query->where(function($q) use ($request) {
+                $q->where('nama_lengkap', 'like', '%' . $request->search . '%')
+                  ->orWhere('jabatan', 'like', '%' . $request->search . '%');
+            });
+        }
 
-        // if ($request->has('search') && $request->search != '') {
-        //     $query->where('nama_lengkap', 'like', '%' . $request->search . '%')
-        //         ->orWhere('jabatan', 'like', '%' . $request->search . '%');
-        // }
+        $aparatur = $query->latest()->paginate(10);
 
-        // $aparatur = $query->latest()->paginate(10);
-
-        // return response()->json([
-        //     'success' => true,
-        //     'message' => 'Daftar Aparatur Desa',
-        //     'data' => $aparatur
-        // ]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Daftar Aparatur Desa',
+            'data' => $aparatur
+        ]);
     }
 
 

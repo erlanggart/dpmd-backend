@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 class ProdukHukumController extends Controller
 {
@@ -22,6 +23,17 @@ class ProdukHukumController extends Controller
         if ($request->has('search') && $request->search != '') {
             $searchTerm = $request->search;
             $query->where('judul', 'like', '%' . $searchTerm . '%');
+        }
+
+        // Jika parameter 'all' ada, return semua data tanpa pagination
+        if ($request->has('all') && $request->all) {
+            $produkHukums = $query->latest()->get();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Daftar Produk Hukum',
+                'data' => $produkHukums
+            ]);
         }
 
         $produkHukums = $query->latest()->paginate(12);
