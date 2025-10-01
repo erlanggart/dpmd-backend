@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Support\Str;
 
 class AparaturDesa extends Model
 {
     use HasFactory;
+    use HasUuids;
 
     protected $table = 'aparatur_desa';
 
@@ -16,7 +19,6 @@ class AparaturDesa extends Model
         'nama_lengkap',
         'jabatan',
         'nipd',
-        'niap',
         'tempat_lahir',
         'tanggal_lahir',
         'jenis_kelamin',
@@ -40,6 +42,22 @@ class AparaturDesa extends Model
         'file_akta_kelahiran',
         'file_ijazah_terakhir',
     ];
+
+    // Use uuid as route key if desired
+    public function getRouteKeyName()
+    {
+        return 'uuid';
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+        });
+    }
 
     /**
      * Get the desa that owns the aparatur.

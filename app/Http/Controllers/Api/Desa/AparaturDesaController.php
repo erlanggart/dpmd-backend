@@ -22,9 +22,9 @@ class AparaturDesaController extends Controller
         $query = AparaturDesa::with('desa', 'produkHukum')->where('desa_id', $user->desa_id);
 
         if ($request->has('search') && $request->search != '') {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 $q->where('nama_lengkap', 'like', '%' . $request->search . '%')
-                  ->orWhere('jabatan', 'like', '%' . $request->search . '%');
+                    ->orWhere('jabatan', 'like', '%' . $request->search . '%');
             });
         }
 
@@ -45,11 +45,29 @@ class AparaturDesaController extends Controller
     {
         $user = $request->user();
 
+        // Normalize empty strings to null for nullable fields
+        $input = $request->all();
+        $nullableFields = [
+            'nipd',
+            'pangkat_golongan',
+            'tanggal_pemberhentian',
+            'nomor_sk_pemberhentian',
+            'keterangan',
+            'produk_hukum_id',
+            'bpjs_kesehatan_nomor',
+            'bpjs_ketenagakerjaan_nomor',
+        ];
+        foreach ($nullableFields as $field) {
+            if (array_key_exists($field, $input) && $input[$field] === '') {
+                $input[$field] = null;
+            }
+        }
+        $request->merge($input);
+
         $validator = Validator::make($request->all(), [
             'nama_lengkap' => 'required|string|max:255',
             'jabatan' => 'required|string|max:255',
             'nipd' => 'nullable|string|max:255',
-            'niap' => 'nullable|string|max:255',
             'tempat_lahir' => 'required|string|max:255',
             'tanggal_lahir' => 'required|date',
             'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
@@ -104,7 +122,11 @@ class AparaturDesaController extends Controller
      */
     public function show($id)
     {
-        $aparatur = AparaturDesa::with('desa', 'produkHukum')->find($id);
+        $aparatur = AparaturDesa::with('desa', 'produkHukum')
+            ->where(function ($q) use ($id) {
+                $q->where('id', $id)->orWhere('uuid', $id);
+            })
+            ->first();
 
         if (!$aparatur) {
             return response()->json(['message' => 'Data tidak ditemukan'], 404);
@@ -121,17 +143,34 @@ class AparaturDesaController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $aparatur = AparaturDesa::find($id);
+        $aparatur = AparaturDesa::where('id', $id)->orWhere('uuid', $id)->first();
         if (!$aparatur) {
             return response()->json(['message' => 'Data tidak ditemukan'], 404);
         }
 
-        // Validasi (mirip dengan store, tapi file tidak required)
+        // Normalize empty strings to null for nullable fields and validate (mirip dengan store, tapi file tidak required)
+        $input = $request->all();
+        $nullableFields = [
+            'nipd',
+            'pangkat_golongan',
+            'tanggal_pemberhentian',
+            'nomor_sk_pemberhentian',
+            'keterangan',
+            'produk_hukum_id',
+            'bpjs_kesehatan_nomor',
+            'bpjs_ketenagakerjaan_nomor',
+        ];
+        foreach ($nullableFields as $field) {
+            if (array_key_exists($field, $input) && $input[$field] === '') {
+                $input[$field] = null;
+            }
+        }
+        $request->merge($input);
+
         $validator = Validator::make($request->all(), [
             'nama_lengkap' => 'required|string|max:255',
             'jabatan' => 'required|string|max:255',
             'nipd' => 'nullable|string|max:255',
-            'niap' => 'nullable|string|max:255',
             'tempat_lahir' => 'required|string|max:255',
             'tanggal_lahir' => 'required|date',
             'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
@@ -191,7 +230,7 @@ class AparaturDesaController extends Controller
      */
     public function destroy($id)
     {
-        $aparatur = AparaturDesa::find($id);
+        $aparatur = AparaturDesa::where('id', $id)->orWhere('uuid', $id)->first();
 
         if (!$aparatur) {
             return response()->json(['message' => 'Data tidak ditemukan'], 404);
