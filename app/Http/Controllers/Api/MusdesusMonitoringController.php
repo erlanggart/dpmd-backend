@@ -274,4 +274,74 @@ class MusdesusMonitoringController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get kecamatan list dari petugas monitoring untuk dropdown upload
+     */
+    public function getKecamatanFromMonitoring(): JsonResponse
+    {
+        try {
+            $kecamatanList = DB::table('petugas_monitoring as pm')
+                ->join('kecamatans as k', 'pm.nama_kecamatan', '=', 'k.nama')
+                ->where('pm.is_active', true)
+                ->select('k.id', 'k.nama')
+                ->distinct()
+                ->orderBy('k.nama')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $kecamatanList
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data kecamatan dari monitoring',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get desa list dari petugas monitoring berdasarkan kecamatan untuk dropdown upload
+     */
+    public function getDesaFromMonitoringByKecamatan($kecamatanId): JsonResponse
+    {
+        try {
+            // Get nama kecamatan berdasarkan ID
+            $kecamatan = DB::table('kecamatans')->where('id', $kecamatanId)->first();
+            
+            if (!$kecamatan) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kecamatan tidak ditemukan'
+                ], 404);
+            }
+
+            $desaList = DB::table('petugas_monitoring as pm')
+                ->join('desas as d', function($join) {
+                    $join->on('pm.nama_desa', '=', 'd.nama')
+                         ->on('pm.nama_kecamatan', '=', DB::raw('(SELECT nama FROM kecamatans WHERE id = d.kecamatan_id)'));
+                })
+                ->where('pm.is_active', true)
+                ->where('pm.nama_kecamatan', $kecamatan->nama)
+                ->select('d.id', 'd.nama')
+                ->distinct()
+                ->orderBy('d.nama')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $desaList
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data desa dari monitoring',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
