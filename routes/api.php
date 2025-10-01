@@ -12,8 +12,7 @@ use App\Http\Controllers\Api\HeroGalleryController;
 use App\Http\Controllers\Api\ProfilDesaController;
 use App\Http\Controllers\Api\Desa\ProdukHukumController;
 use App\Http\Controllers\Api\Desa\AparaturDesaController;
-use App\Http\Controllers\Api\FaceRecognitionController;
-use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\MusdesusMonitoringController;
 
 use App\Http\Controllers\Api\BumdesController;
 use App\Http\Controllers\Api\Perjadin\KegiatanController as PerjadinKegiatanController;
@@ -52,23 +51,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/login/bidang', [AuthController::class, 'loginBidang']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
-// Health Check Routes
-Route::get('/health', [HealthController::class, 'check']);
-Route::get('/health/info', [HealthController::class, 'info']);
-Route::get('/health/face-id', [HealthController::class, 'faceIdStatus']);
 
-// Face Recognition Routes
-Route::post('/face/login', [FaceRecognitionController::class, 'faceLogin']);
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/face/register', [FaceRecognitionController::class, 'registerFace']);
-    Route::get('/face/status', [FaceRecognitionController::class, 'getFaceStatus']);
-    Route::delete('/face/data', [FaceRecognitionController::class, 'deleteFaceData']);
-    
-    // Admin only routes
-    Route::middleware('role:superadmin|sekretariat')->group(function () {
-        Route::post('/face/verify/{userId}', [FaceRecognitionController::class, 'verifyFaceData']);
-    });
-});
 
 // Admin verification endpoint for secure delete operations
 Route::post('/admin/verify-login', [AuthController::class, 'verifyAdminLogin']);
@@ -302,7 +285,18 @@ Route::middleware(['auth:sanctum', 'role:superadmin|sekretariat'])->prefix('admi
     Route::get('/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'show']);
     Route::put('/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'update']);
     Route::delete('/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'destroy']);
+    
+    // Routes untuk monitoring 37 desa target
+    Route::get('/monitoring/dashboard', [MusdesusMonitoringController::class, 'getDashboardData']);
+    Route::get('/monitoring/desa/{petugasId}', [MusdesusMonitoringController::class, 'getDesaDetail']);
 });
+
+// Public monitoring endpoint (read-only) untuk stats page
+Route::get('/public/musdesus/monitoring', [MusdesusMonitoringController::class, 'getPublicMonitoringData']);
+
+// Endpoint untuk musdesus monitoring upload page
+Route::get('/musdesus/kecamatan-desa', [MusdesusMonitoringController::class, 'getKecamatanDesa']);
+Route::post('/musdesus/petugas-by-desa', [MusdesusMonitoringController::class, 'getPetugasByDesa']);
 
 // Secure admin-only delete musdesus endpoint for public stats page
 Route::delete('/public/musdesus/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'secureDestroy']);

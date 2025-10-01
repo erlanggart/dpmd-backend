@@ -8,6 +8,7 @@ use App\Models\Desa;
 use App\Models\Kecamatan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -134,8 +135,33 @@ class MusdesusController extends Controller
                 'keterangan' => 'nullable|string',
                 'tanggal_musdesus' => 'nullable|date',
                 'files' => 'required|array|min:1',
-                'files.*' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240' // max 10MB per file
+                'files.*' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240', // max 10MB per file
+                'petugas_id' => 'required|exists:petugas_monitoring,id'
             ]);
+
+            // Validasi petugas monitoring
+            $petugas = DB::table('petugas_monitoring')
+                ->where('id', $request->petugas_id)
+                ->where('is_active', true)
+                ->first();
+
+            if (!$petugas) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Petugas monitoring tidak valid atau tidak aktif'
+                ], 422);
+            }
+
+            // Validasi kesesuaian desa dan kecamatan dengan petugas
+            $desa = Desa::find($request->desa_id);
+            $kecamatan = Kecamatan::find($request->kecamatan_id);
+
+            if ($petugas->nama_desa !== $desa->nama || $petugas->nama_kecamatan !== $kecamatan->nama) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Petugas tidak berwenang upload untuk desa/kecamatan ini. Hanya dapat upload untuk: ' . $petugas->nama_desa . ', Kec. ' . $petugas->nama_kecamatan
+                ], 422);
+            }
 
             // Check if desa already has uploaded files
             $existingUpload = Musdesus::where('desa_id', $request->desa_id)->first();
@@ -153,9 +179,9 @@ class MusdesusController extends Controller
             }
 
             // Create directory if not exists
-            $uploadPath = 'musdesus';
-            if (!Storage::disk('public')->exists($uploadPath)) {
-                Storage::disk('public')->makeDirectory($uploadPath);
+            $uploadPath = '';
+            if (!Storage::disk('musdesus')->exists($uploadPath)) {
+                Storage::disk('musdesus')->makeDirectory($uploadPath);
             }
 
             $uploadedFiles = [];
@@ -165,7 +191,7 @@ class MusdesusController extends Controller
                 $fileName = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
                 
                 // Store file
-                $path = $file->storeAs($uploadPath, $fileName, 'public');
+                $path = $file->storeAs($uploadPath, $fileName, 'musdesus');
 
                 // Create database record
                 $musdesus = Musdesus::create([
@@ -181,6 +207,7 @@ class MusdesusController extends Controller
                     'kecamatan_id' => $request->kecamatan_id,
                     'keterangan' => $request->keterangan,
                     'tanggal_musdesus' => $request->tanggal_musdesus,
+                    'petugas_id' => $request->petugas_id,
                     'status' => 'pending'
                 ]);
 
@@ -267,8 +294,8 @@ class MusdesusController extends Controller
             $musdesus = Musdesus::findOrFail($id);
             
             // Delete file from storage
-            if (Storage::disk('public')->exists($musdesus->path_file)) {
-                Storage::disk('public')->delete($musdesus->path_file);
+            if (Storage::disk('musdesus')->exists($musdesus->nama_file)) {
+                Storage::disk('musdesus')->delete($musdesus->nama_file);
             }
 
             $musdesus->delete();
@@ -294,7 +321,7 @@ class MusdesusController extends Controller
         try {
             $musdesus = Musdesus::findOrFail($id);
             
-            $filePath = storage_path('app/public/' . $musdesus->path_file);
+            $filePath = 'public_html/api_OLD/storage/public/musdesus/' . $musdesus->nama_file;
             
             if (!file_exists($filePath)) {
                 return response()->json([
@@ -321,7 +348,7 @@ class MusdesusController extends Controller
         try {
             $musdesus = Musdesus::where('nama_file', $filename)->firstOrFail();
             
-            $filePath = storage_path('app/public/' . $musdesus->path_file);
+            $filePath = 'public_html/api_OLD/storage/public/musdesus/' . $musdesus->nama_file;
             
             if (!file_exists($filePath)) {
                 return response()->json([
@@ -353,7 +380,7 @@ class MusdesusController extends Controller
         try {
             $musdesus = Musdesus::where('nama_file', $filename)->firstOrFail();
             
-            $filePath = storage_path('app/public/' . $musdesus->path_file);
+            $filePath = 'public_html/api_OLD/storage/public/musdesus/' . $musdesus->nama_file;
             
             if (!file_exists($filePath)) {
                 return response()->json([
@@ -387,8 +414,8 @@ class MusdesusController extends Controller
             $fileName = $musdesus->nama_file_asli;
             
             // Delete physical file
-            if ($musdesus->path_file && Storage::disk('public')->exists($musdesus->path_file)) {
-                Storage::disk('public')->delete($musdesus->path_file);
+            if ($musdesus->nama_file && Storage::disk('musdesus')->exists($musdesus->nama_file)) {
+                Storage::disk('musdesus')->delete($musdesus->nama_file);
             }
             
             // Delete database record

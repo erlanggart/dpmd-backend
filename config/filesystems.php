@@ -56,6 +56,18 @@ return [
             'visibility' => 'public',
         ],
 
+        'musdesus' => [
+            'driver' => 'local',
+            'root' => env('APP_ENV') === 'production' 
+                ? base_path('../public_html/api_OLD/storage/public/musdesus')
+                : storage_path('app/public/musdesus'),
+            'url' => env('APP_ENV') === 'production'
+                ? env('APP_URL') . '/storage/public/musdesus'
+                : env('APP_URL') . '/storage/musdesus',
+            'visibility' => 'public',
+            'throw' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
