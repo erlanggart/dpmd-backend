@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('aparatur_desa', function (Blueprint $table) {
-            $table->id();
+            // Use UUID as primary key
+            $table->uuid('id')->primary();
             $table->foreignId('desa_id')->constrained('desas')->onDelete('cascade');
 
             // --- Biodata ---
@@ -34,7 +35,7 @@ return new class extends Migration
             $table->enum('status', ['Aktif', 'Tidak Aktif'])->default('Aktif');
 
             // --- Data Terhubung ---
-            $table->foreignId('produk_hukum_id')->nullable()->constrained('produk_hukums')->onDelete('set null')->comment('SK Pengangkatan dari Produk Hukum');
+            $table->foreignUuid('produk_hukum_id')->nullable()->constrained('produk_hukums')->nullOnDelete()->comment('SK Pengangkatan dari Produk Hukum');
             $table->string('bpjs_kesehatan_nomor')->nullable();
             $table->string('bpjs_ketenagakerjaan_nomor')->nullable();
             $table->string('file_bpjs_kesehatan')->nullable();

@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('produk_hukums', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->foreignId('desa_id')->constrained('desas')->onDelete('cascade');
             $table->string('tipe_dokumen')->default('Peraturan Perundang-undangan');
             $table->string('judul');

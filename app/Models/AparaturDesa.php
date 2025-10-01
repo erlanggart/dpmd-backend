@@ -4,15 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Support\Str;
 
 class AparaturDesa extends Model
 {
     use HasFactory;
-    use HasUuids;
 
     protected $table = 'aparatur_desa';
+
+    // UUID primary key
+    protected $keyType = 'string';
+    public $incrementing = false;
 
     protected $fillable = [
         'desa_id',
@@ -43,18 +45,12 @@ class AparaturDesa extends Model
         'file_ijazah_terakhir',
     ];
 
-    // Use uuid as route key if desired
-    public function getRouteKeyName()
-    {
-        return 'uuid';
-    }
-
     protected static function boot()
     {
         parent::boot();
         static::creating(function ($model) {
-            if (empty($model->uuid)) {
-                $model->uuid = (string) Str::uuid();
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
             }
         });
     }

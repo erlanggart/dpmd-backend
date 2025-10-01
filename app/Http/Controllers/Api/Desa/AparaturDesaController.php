@@ -96,8 +96,16 @@ class AparaturDesaController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        $data = $request->except(['file_bpjs_kesehatan', 'file_bpjs_ketenagakerjaan', 'file_pas_foto', 'file_ktp', 'file_kk', 'file_akta_kelahiran', 'file_ijazah_terakhir']);
+        $data = $request->except(['file_bpjs_kesehatan', 'file_bpjs_ketenagakerjaan', 'file_pas_foto', 'file_ktp', 'file_kk', 'file_akta_kelahiran', 'file_ijazah_terakhir', 'id', 'produk_hukum_uuid']);
         $data['desa_id'] = $user->desa_id;
+
+        // Optional: map produk_hukum_uuid to produk_hukum_id
+        if ($request->filled('produk_hukum_uuid')) {
+            $ph = ProdukHukum::where('id', $request->produk_hukum_uuid)
+                ->orWhere('uuid', $request->produk_hukum_uuid)
+                ->first();
+            $data['produk_hukum_id'] = $ph?->id;
+        }
 
         // Handle file uploads
         $fileFields = ['file_bpjs_kesehatan', 'file_bpjs_ketenagakerjaan', 'file_pas_foto', 'file_ktp', 'file_kk', 'file_akta_kelahiran', 'file_ijazah_terakhir'];
@@ -122,11 +130,7 @@ class AparaturDesaController extends Controller
      */
     public function show($id)
     {
-        $aparatur = AparaturDesa::with('desa', 'produkHukum')
-            ->where(function ($q) use ($id) {
-                $q->where('id', $id)->orWhere('uuid', $id);
-            })
-            ->first();
+        $aparatur = AparaturDesa::with('desa', 'produkHukum')->where('id', $id)->first();
 
         if (!$aparatur) {
             return response()->json(['message' => 'Data tidak ditemukan'], 404);
@@ -143,7 +147,7 @@ class AparaturDesaController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $aparatur = AparaturDesa::where('id', $id)->orWhere('uuid', $id)->first();
+        $aparatur = AparaturDesa::where('id', $id)->first();
         if (!$aparatur) {
             return response()->json(['message' => 'Data tidak ditemukan'], 404);
         }
@@ -199,7 +203,15 @@ class AparaturDesaController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        $data = $request->except(['_method', 'file_bpjs_kesehatan', 'file_bpjs_ketenagakerjaan', 'file_pas_foto', 'file_ktp', 'file_kk', 'file_akta_kelahiran', 'file_ijazah_terakhir']);
+        $data = $request->except(['_method', 'file_bpjs_kesehatan', 'file_bpjs_ketenagakerjaan', 'file_pas_foto', 'file_ktp', 'file_kk', 'file_akta_kelahiran', 'file_ijazah_terakhir', 'produk_hukum_uuid']);
+
+        // Optional: map produk_hukum_uuid to produk_hukum_id
+        if ($request->filled('produk_hukum_uuid')) {
+            $ph = ProdukHukum::where('id', $request->produk_hukum_uuid)
+                ->orWhere('uuid', $request->produk_hukum_uuid)
+                ->first();
+            $data['produk_hukum_id'] = $ph?->id;
+        }
 
         // Handle file updates
         $fileFields = ['file_bpjs_kesehatan', 'file_bpjs_ketenagakerjaan', 'file_pas_foto', 'file_ktp', 'file_kk', 'file_akta_kelahiran', 'file_ijazah_terakhir'];
@@ -230,7 +242,7 @@ class AparaturDesaController extends Controller
      */
     public function destroy($id)
     {
-        $aparatur = AparaturDesa::where('id', $id)->orWhere('uuid', $id)->first();
+        $aparatur = AparaturDesa::where('id', $id)->first();
 
         if (!$aparatur) {
             return response()->json(['message' => 'Data tidak ditemukan'], 404);

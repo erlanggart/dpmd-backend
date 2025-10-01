@@ -11,14 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('aparatur_desas', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('desa_id')->constrained('desas')->onDelete('cascade');
-            $table->string('nama_lengkap');
-            $table->string('jabatan');
-            $table->string('kontak')->nullable();
-            $table->timestamps();
-        });
+        // No-op: We use the singular table `aparatur_desa` as the canonical table.
+        // This migration is intentionally left empty to avoid creating a duplicate table.
     }
 
     /**
@@ -26,6 +20,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('aparatur_desas');
+        // No-op
     }
 };

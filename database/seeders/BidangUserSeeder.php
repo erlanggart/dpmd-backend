@@ -17,31 +17,31 @@ class BidangUserSeeder extends Seeder
         $bidangUsers = [
             [
                 'name' => 'Admin Sekretariat',
-                'email' => 'sekretariat@dpmd.com',
+                'email' => 'sekretariat@dpmd.bogorkab.go.id',
                 'password' => Hash::make('password'),
                 'role' => 'sekretariat',
             ],
             [
                 'name' => 'Admin Sarana Prasarana',
-                'email' => 'sarana@dpmd.com',
+                'email' => 'sarana@dpmd.bogorkab.go.id',
                 'password' => Hash::make('password'),
                 'role' => 'sarana_prasarana',
             ],
             [
                 'name' => 'Admin Kekayaan Keuangan',
-                'email' => 'keuangan@dpmd.com',
+                'email' => 'keuangan@dpmd.bogorkab.go.id',
                 'password' => Hash::make('password'),
                 'role' => 'kekayaan_keuangan',
             ],
             [
                 'name' => 'Admin Pemberdayaan Masyarakat',
-                'email' => 'pemberdayaan@dpmd.com',
+                'email' => 'pemberdayaan@dpmd.bogorkab.go.id',
                 'password' => Hash::make('password'),
                 'role' => 'pemberdayaan_masyarakat',
             ],
             [
                 'name' => 'Admin Pemerintahan Desa',
-                'email' => 'pemerintahan@dpmd.com',
+                'email' => 'pemerintahan@dpmd.bogorkab.go.id',
                 'password' => Hash::make('password'),
                 'role' => 'pemerintahan_desa',
             ],
@@ -50,7 +50,7 @@ class BidangUserSeeder extends Seeder
         foreach ($bidangUsers as $userData) {
             // Check if user already exists
             $existingUser = User::where('email', $userData['email'])->first();
-            
+
             if ($existingUser) {
                 $this->command->warn("User {$userData['email']} sudah ada. Melewatkan pembuatan.");
                 continue;

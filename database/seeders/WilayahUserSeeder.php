@@ -23,7 +23,7 @@ class WilayahUserSeeder extends Seeder
             $kecamatanSlug = Str::slug($desa->kecamatan->nama); // Ambil slug dari nama kecamatan
 
             // Gabungkan untuk membuat email yang unik
-            $email = strtolower("desa.{$desaSlug}.{$kecamatanSlug}@dpmd.com");
+            $email = strtolower("desa.{$desaSlug}.{$kecamatanSlug}@dpmd.bogorkab.go.id");
 
             $userDesa = User::updateOrCreate(
                 ['email' => $email], // Cari berdasarkan email
@@ -40,7 +40,7 @@ class WilayahUserSeeder extends Seeder
         $kecamatans = Kecamatan::all();
         foreach ($kecamatans as $kecamatan) {
             $userKecamatan = User::updateOrCreate(
-                ['email' => strtolower('kecamatan.' . Str::slug($kecamatan->nama) . '@dpmd.com')],
+                ['email' => strtolower('kecamatan.' . Str::slug($kecamatan->nama) . '@dpmd.bogorkab.go.id')],
                 [
                     'name' => 'Admin Kecamatan ' . $kecamatan->nama,
                     'password' => Hash::make('password'),
@@ -52,7 +52,7 @@ class WilayahUserSeeder extends Seeder
 
         // --- BUAT AKUN ADMIN DINAS ---
         $userDinas = User::updateOrCreate(
-            ['email' => 'dinas@dpmd.com'],
+            ['email' => 'dinas@dpmd.bogorkab.go.id'],
             [
                 'name' => 'Admin Dinas DPMD',
                 'password' => Hash::make('password'),
