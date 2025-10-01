@@ -22,6 +22,7 @@ class Musdesus extends Model
         'telepon_pengupload',
         'desa_id',
         'kecamatan_id',
+        'petugas_id',
         'keterangan',
         'status',
         'catatan_admin',
