@@ -321,15 +321,14 @@ class MusdesusController extends Controller
         try {
             $musdesus = Musdesus::findOrFail($id);
             
-            $filePath = 'public_html/api_OLD/storage/public/musdesus/' . $musdesus->nama_file;
-            
-            if (!file_exists($filePath)) {
+            if (!Storage::disk('musdesus')->exists($musdesus->nama_file)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'File tidak ditemukan'
                 ], 404);
             }
 
+            $filePath = Storage::disk('musdesus')->path($musdesus->nama_file);
             return response()->download($filePath, $musdesus->nama_file_asli);
         } catch (\Exception $e) {
             return response()->json([
@@ -348,15 +347,14 @@ class MusdesusController extends Controller
         try {
             $musdesus = Musdesus::where('nama_file', $filename)->firstOrFail();
             
-            $filePath = 'public_html/api_OLD/storage/public/musdesus/' . $musdesus->nama_file;
-            
-            if (!file_exists($filePath)) {
+            if (!Storage::disk('musdesus')->exists($musdesus->nama_file)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'File tidak ditemukan'
                 ], 404);
             }
 
+            $filePath = Storage::disk('musdesus')->path($musdesus->nama_file);
             $mimeType = mime_content_type($filePath);
             
             return response()->file($filePath, [
@@ -380,15 +378,14 @@ class MusdesusController extends Controller
         try {
             $musdesus = Musdesus::where('nama_file', $filename)->firstOrFail();
             
-            $filePath = 'public_html/api_OLD/storage/public/musdesus/' . $musdesus->nama_file;
-            
-            if (!file_exists($filePath)) {
+            if (!Storage::disk('musdesus')->exists($musdesus->nama_file)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'File tidak ditemukan'
                 ], 404);
             }
 
+            $filePath = Storage::disk('musdesus')->path($musdesus->nama_file);
             return response()->download($filePath, $musdesus->nama_file_asli);
         } catch (\Exception $e) {
             return response()->json([

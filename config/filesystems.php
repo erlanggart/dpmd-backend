@@ -59,10 +59,10 @@ return [
         'musdesus' => [
             'driver' => 'local',
             'root' => env('APP_ENV') === 'production' 
-                ? base_path('../public_html/api_OLD/storage/public/musdesus')
+                ? base_path('../public_html/api/uploads/musdesus')
                 : storage_path('app/public/musdesus'),
             'url' => env('APP_ENV') === 'production'
-                ? env('APP_URL') . '/storage/public/musdesus'
+                ? env('APP_URL') . '/api/uploads/musdesus'
                 : env('APP_URL') . '/storage/musdesus',
             'visibility' => 'public',
             'throw' => false,
@@ -96,7 +96,6 @@ return [
 
     'links' => [
         public_path('storage') => storage_path('app/public'),
-        public_path('uploads') => storage_path('app/uploads'),
     ],
 
 ];
