@@ -28,7 +28,7 @@ class ProdukHukumController extends Controller
         // Jika parameter 'all' ada, return semua data tanpa pagination
         if ($request->has('all') && $request->all) {
             $produkHukums = $query->latest()->get();
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Daftar Produk Hukum',
@@ -78,7 +78,7 @@ class ProdukHukumController extends Controller
         // Dapatkan hanya nama file dari path yang dihasilkan
         $fileName = basename($path);
 
-        $produkHukum = ProdukHukum::create(array_merge($request->except('file'), [
+        $produkHukum = ProdukHukum::create(array_merge($request->except(['file', 'id']), [
             'desa_id' => $user->desa_id,
             'file' => $fileName, // Simpan hanya nama file
         ]));
@@ -102,7 +102,8 @@ class ProdukHukumController extends Controller
      */
     public function show($id)
     {
-        $produkHukum = ProdukHukum::with('desa.kecamatan')->find($id);
+        $produkHukum = ProdukHukum::with('desa.kecamatan')
+            ->where('id', $id)->first();
 
         if ($produkHukum) {
             return response()->json([
@@ -123,7 +124,7 @@ class ProdukHukumController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $produkHukum = ProdukHukum::find($id);
+        $produkHukum = ProdukHukum::where('id', $id)->first();
 
         if (!$produkHukum) {
             return response()->json([
@@ -193,7 +194,7 @@ class ProdukHukumController extends Controller
      */
     public function destroy($id)
     {
-        $produkHukum = ProdukHukum::find($id);
+        $produkHukum = ProdukHukum::where('id', $id)->first();
 
         if (!$produkHukum) {
             return response()->json([
@@ -217,7 +218,7 @@ class ProdukHukumController extends Controller
      */
     public function updateStatus(Request $request, $id)
     {
-        $produkHukum = ProdukHukum::find($id);
+        $produkHukum = ProdukHukum::where('id', $id)->first();
 
         if (!$produkHukum) {
             return response()->json([
