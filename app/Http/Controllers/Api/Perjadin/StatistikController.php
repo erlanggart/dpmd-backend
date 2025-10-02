@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api\Perjadin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Perjadin\Kegiatan;
-use App\Models\Perjadin\KegiatanBidang;
-use App\Models\Bidang;
-use App\Models\Perjadin\Personil;
+use App\Models\ModelsPerjadin\Kegiatan;
+use App\Models\ModelsPerjadin\KegiatanBidang;
+use App\Models\ModelsPerjadin\Bidang;
+use App\Models\Perjadin\PersonilPerjadin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
