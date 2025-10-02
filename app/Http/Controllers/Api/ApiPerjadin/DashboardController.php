@@ -1,11 +1,12 @@
 <?php
 
-// dpmd-backend/app/Http/Controllers/DashboardController.php
-namespace App\Http\Controllers;
-use App\Models\Kegiatan;
-use App\Models\KegiatanBidang;
-use App\Models\Bidang;
-use App\Models\Personil;
+// dpmd-backend/app/Http/Controllers/Api/ApiPerjadin/DashboardController.php
+namespace App\Http\Controllers\Api\ApiPerjadin;
+use App\Http\Controllers\Controller;
+use App\Models\ModelsPerjadin\Kegiatan;
+use App\Models\ModelsPerjadin\KegiatanBidang;
+use App\Models\ModelsPerjadin\Bidang;
+use App\Models\ModelsPerjadin\Personil;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
