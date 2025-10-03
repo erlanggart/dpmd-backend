@@ -31,6 +31,9 @@ class BumdesTableSeeder extends Seeder
             return;
         }
 
+        $totalData = count($data);
+        $this->command->info("Memproses {$totalData} data BUMDes dari file JSON...");
+
         // Tentukan kolom-kolom yang harus diubah menjadi integer
         $integerColumns = [
             'Omset2023', 'Laba2023', 'Omset2024', 'Laba2024',
@@ -40,9 +43,11 @@ class BumdesTableSeeder extends Seeder
             'KontribusiTerhadapPADes2021', 'KontribusiTerhadapPADes2022', 'KontribusiTerhadapPADes2023', 'KontribusiTerhadapPADes2024',
         ];
 
-        foreach ($data as $bumdesData) {
-            // Extract kode_desa from desa field (format: "3201112001-CIDOKOM")
+        foreach ($data as $index => $bumdesData) {
+            // Generate kode_desa dari kombinasi kecamatan dan desa, atau gunakan index sebagai fallback
             $kode_desa = null;
+            
+            // Coba extract kode_desa dari desa field jika ada format "kode-nama"
             if (isset($bumdesData['desa']) && 
                 $bumdesData['desa'] !== '-' && 
                 $bumdesData['desa'] !== '' && 
@@ -52,10 +57,21 @@ class BumdesTableSeeder extends Seeder
                     $kode_desa = $parts[0];
                 }
             }
-
-            // Skip entries without valid kode_desa
+            
+            // Jika tidak ada kode_desa, generate berdasarkan kecamatan-desa atau index
             if (empty($kode_desa)) {
-                $this->command->warn("Melewatkan entri dengan desa '{$bumdesData['desa']}' karena tidak memiliki kode desa yang valid.");
+                if (!empty($bumdesData['kecamatan']) && !empty($bumdesData['desa'])) {
+                    // Generate kode unik berdasarkan kombinasi kecamatan-desa
+                    $kode_desa = substr(md5($bumdesData['kecamatan'] . '-' . $bumdesData['desa']), 0, 10);
+                } else {
+                    // Fallback menggunakan index + 1
+                    $kode_desa = 'GEN' . str_pad($index + 1, 6, '0', STR_PAD_LEFT);
+                }
+            }
+
+            // Skip jika tidak ada nama BUMDes (data tidak valid)
+            if (empty($bumdesData['namabumdesa']) || trim($bumdesData['namabumdesa']) === '') {
+                $this->command->warn("Melewatkan entri kosong pada index {$index} karena tidak memiliki nama BUMDes.");
                 continue;
             }
 
@@ -148,9 +164,14 @@ class BumdesTableSeeder extends Seeder
                 }
             }
             
-            // Periksa apakah data dengan 'kode_desa' yang sama sudah ada sebelum membuat
-            if (Bumdes::where('kode_desa', $kode_desa)->exists()) {
-                $this->command->warn("Data untuk kode desa '{$kode_desa}' sudah ada. Melewatkan pembuatan entri.");
+            // Periksa duplikasi berdasarkan kombinasi kecamatan, desa, dan nama BUMDes
+            $existingBumdes = Bumdes::where('kecamatan', $mappedData['kecamatan'])
+                                   ->where('desa', $mappedData['desa'])
+                                   ->where('namabumdesa', $mappedData['namabumdesa'])
+                                   ->first();
+            
+            if ($existingBumdes) {
+                $this->command->warn("Data BUMDes '{$mappedData['namabumdesa']}' di desa '{$mappedData['desa']}' sudah ada. Melewatkan pembuatan entri.");
                 continue; // Lanjut ke iterasi berikutnya
             }
 
@@ -159,9 +180,15 @@ class BumdesTableSeeder extends Seeder
                 return $key !== '';
             }, ARRAY_FILTER_USE_KEY);
 
-            Bumdes::create($cleanedData);
+            try {
+                Bumdes::create($cleanedData);
+                $this->command->info("✓ Berhasil menambah: {$mappedData['namabumdesa']} - {$mappedData['desa']}");
+            } catch (\Exception $e) {
+                $this->command->error("✗ Gagal menambah {$mappedData['namabumdesa']}: " . $e->getMessage());
+            }
         }
         
-        $this->command->info('Data BUMDes berhasil dimasukkan dari file JSON!');
+        $finalCount = Bumdes::count();
+        $this->command->info("Seeding selesai! Total data BUMDes di database: {$finalCount}");
     }
 }
