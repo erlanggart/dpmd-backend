@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api\Perjadin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ModelsPerjadin\Kegiatan;
-use App\Models\ModelsPerjadin\KegiatanBidang;
-use App\Models\ModelsPerjadin\Bidang;
-use App\Models\Perjadin\PersonilPerjadin;
+use App\Models\Perjadin\Kegiatan;
+use App\Models\Perjadin\KegiatanBidang;
+use App\Models\Bidang;
+use App\Models\Perjadin\Personil;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -65,26 +65,33 @@ class StatistikController extends Controller
                 ->get();
 
             return response()->json([
-                'totalPerjalanan' => $totalPerjalanan,
-                'totalBidang' => $totalBidang,
-                'totalPersonil' => $totalPersonil,
-                'grafikData' => $grafikData,
-                'topBidang' => $topBidang,
-                'personilPerBidang' => $personilPerBidang,
-                'trendData' => [] // Untuk keperluan masa depan
+                'success' => true,
+                'data' => [
+                    'totalPerjalanan' => $totalPerjalanan,
+                    'totalBidang' => $totalBidang,
+                    'totalPersonil' => $totalPersonil,
+                    'grafikData' => $grafikData,
+                    'topBidang' => $topBidang,
+                    'personilPerBidang' => $personilPerBidang,
+                    'trendData' => [] // Untuk keperluan masa depan
+                ]
             ]);
 
         } catch (\Exception $e) {
             // Kembalikan error untuk debugging
             return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data statistik',
                 'error' => $e->getMessage(),
-                'totalPerjalanan' => 0,
-                'totalBidang' => 0,
-                'totalPersonil' => 0,
-                'grafikData' => [],
-                'topBidang' => [],
-                'personilPerBidang' => [],
-                'trendData' => []
+                'data' => [
+                    'totalPerjalanan' => 0,
+                    'totalBidang' => 0,
+                    'totalPersonil' => 0,
+                    'grafikData' => [],
+                    'topBidang' => [],
+                    'personilPerBidang' => [],
+                    'trendData' => []
+                ]
             ], 500);
         }
     }

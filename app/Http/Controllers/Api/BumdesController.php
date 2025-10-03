@@ -165,9 +165,30 @@ class BumdesController extends Controller
     public function update(Request $request, Bumdes $bumdes)
     {
         try {
+            // Debug informasi
+            \Log::info('Update BUMDes - ID: ' . $bumdes->id);
+            \Log::info('Update BUMDes - Kode Desa Lama: ' . $bumdes->kode_desa);
+            \Log::info('Update BUMDes - Kode Desa Baru: ' . $request->input('kode_desa'));
+            
+            // Custom validation untuk kode_desa
+            $kode_desa_baru = $request->input('kode_desa');
+            if ($kode_desa_baru && $kode_desa_baru !== $bumdes->kode_desa) {
+                $existing = Bumdes::where('kode_desa', $kode_desa_baru)
+                                  ->where('id', '!=', $bumdes->id)
+                                  ->first();
+                if ($existing) {
+                    return response()->json([
+                        'message' => 'Validasi gagal.',
+                        'errors' => [
+                            'kode_desa' => ['Kode desa sudah digunakan oleh BUMDes lain.']
+                        ]
+                    ], 422);
+                }
+            }
+            
             // Validasi data masukan
             $validatedData = $request->validate([
-                'kode_desa' => ['nullable', 'string', Rule::unique('bumdes', 'kode_desa')->ignore($bumdes->id)],
+                'kode_desa' => ['nullable', 'string'],
                 'kecamatan' => 'nullable|string',
                 'desa' => 'nullable|string',
                 'namabumdesa' => 'nullable|string',
@@ -274,19 +295,25 @@ class BumdesController extends Controller
      */
     public function destroy(Bumdes $bumdes)
     {
+        Log::info('Destroy method called for BUMDes ID: ' . $bumdes->id);
+        
         $fileFields = [
             'LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024',
             'Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 'AnggaranRumahTangga',
             'ProgramKerja', 'SK_BUM_Desa'
         ];
         
+        // Delete associated files
         foreach ($fileFields as $field) {
             if ($bumdes->$field && Storage::disk('public')->exists($bumdes->$field)) {
                 Storage::disk('public')->delete($bumdes->$field);
+                Log::info("Deleted file: {$bumdes->$field}");
             }
         }
         
-        $bumdes->delete();
+        // Delete the record
+        $deleted = $bumdes->delete();
+        Log::info('Delete result: ' . ($deleted ? 'success' : 'failed'));
 
         return response()->json(['message' => 'Data BUMDes berhasil dihapus.'], 200);
     }
