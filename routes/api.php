@@ -207,21 +207,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/dashboard/weekly-schedule', [PerjadinDashboardController::class, 'weeklySchedule']);
         Route::get('/statistik', [PerjadinStatistikController::class, 'getStatistikPerjadin']);
 
-        Route::middleware(['auth:sanctum'])->group(function () {
-            Route::get('/bidang', [PerjadinBidangController::class, 'index']);
-            Route::get('/personil/{bidang_id}', [PerjadinPersonilController::class, 'getByBidang']);
-            Route::apiResource('/kegiatan', PerjadinKegiatanController::class);
-            Route::get('/check-personnel-conflict', [PerjadinKegiatanController::class, 'checkPersonnelConflict']);
-        });
-    });
-
-    // Routes yang memerlukan role khusus
-    Route::prefix('perjadin')->middleware(['auth:sanctum', 'role:superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa'])->group(function () {
-        Route::get('/kegiatan/export-excel', [PerjadinKegiatanController::class, 'exportExcel']);
+        Route::get('/bidang', [PerjadinBidangController::class, 'index']);
+        Route::get('/personil/{bidang_id}', [PerjadinPersonilController::class, 'getByBidang']);
+        Route::apiResource('/kegiatan', PerjadinKegiatanController::class);
+        Route::get('/check-personnel-conflict', [PerjadinKegiatanController::class, 'checkPersonnelConflict']);
+        
+        // Export routes - moved out of nested middleware to avoid conflicts
         Route::get('/kegiatan/export-data', [PerjadinKegiatanController::class, 'exportData']);
     });
 
 }); // End of auth:sanctum middleware group
+
+
 
 // Routes untuk data referensi Kecamatan dan Desa (tanpa autentikasi untuk BUMDES form)
 Route::get('/kecamatans', function () {
