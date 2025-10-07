@@ -16,13 +16,31 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $mingguan = Kegiatan::whereBetween('tanggal_mulai', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->count();
-        $bulanan = Kegiatan::whereBetween('tanggal_mulai', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()])->count();
-        $per_bidang = KegiatanBidang::select('bidangs.id as id_bidang', 'bidangs.nama as nama_bidang', DB::raw('count(*) as total'))
-            ->join('bidangs', 'kegiatan_bidang.id_bidang', '=', 'bidangs.id')
-            ->groupBy('bidangs.id', 'bidangs.nama')
-            ->get();
-        return response()->json(compact('mingguan', 'bulanan', 'per_bidang'));
+        try {
+            $total = Kegiatan::count();
+            $mingguan = Kegiatan::whereBetween('tanggal_mulai', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->count();
+            $bulanan = Kegiatan::whereBetween('tanggal_mulai', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()])->count();
+            $per_bidang = KegiatanBidang::select('bidangs.id as id_bidang', 'bidangs.nama as nama_bidang', DB::raw('count(*) as total'))
+                ->join('bidangs', 'kegiatan_bidang.id_bidang', '=', 'bidangs.id')
+                ->groupBy('bidangs.id', 'bidangs.nama')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'total' => $total,
+                    'mingguan' => $mingguan,
+                    'bulanan' => $bulanan,
+                    'per_bidang' => $per_bidang
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data dashboard',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function weeklySchedule()
@@ -67,6 +85,9 @@ class DashboardController extends Controller
             }
         }
         
-        return response()->json(array_values($weekly_schedule));
+        return response()->json([
+            'success' => true,
+            'data' => array_values($weekly_schedule)
+        ]);
     }
 }

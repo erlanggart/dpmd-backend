@@ -4,9 +4,9 @@ namespace App\Models\Perjadin;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\Bidang;
+use App\Models\ModelsPerjadin\Bidang;
 
-class Personil extends Model
+class PersonilPerjadin extends Model
 {
     use HasFactory;
     

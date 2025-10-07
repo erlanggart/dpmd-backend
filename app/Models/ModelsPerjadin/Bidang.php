@@ -1,7 +1,7 @@
 <?php
 
-// dpmd-backend/app/Models/Bidang.php
-namespace App\Models;
+// dpmd-backend/app/Models/ModelsPerjadin/Bidang.php
+namespace App\Models\ModelsPerjadin;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 

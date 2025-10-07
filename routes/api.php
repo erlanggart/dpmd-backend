@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\Desa\AparaturDesaController;
 use App\Http\Controllers\Api\MusdesusMonitoringController;
 
 use App\Http\Controllers\Api\BumdesController;
+use App\Http\Controllers\DesaController;
 use App\Http\Controllers\Api\Perjadin\KegiatanController as PerjadinKegiatanController;
 use App\Http\Controllers\Api\Perjadin\DashboardController as PerjadinDashboardController;
 use App\Http\Controllers\Api\Perjadin\BidangController as PerjadinBidangController;
@@ -192,71 +193,55 @@ Route::middleware(['auth:sanctum'])->get('/me', function (Request $request) {
     return response()->json(['user' => $request->user()]);
 });
 
+// Routes untuk BUMDES  
+Route::get('/bumdes/statistics', [BumdesController::class, 'statistics']);
+Route::get('/bumdes/search', [BumdesController::class, 'search']);
+Route::get('/bumdes/check-desa/{kode_desa}', [BumdesController::class, 'checkByKodeDesa']);
+Route::get('/bumdes/dokumen-badan-hukum', [BumdesController::class, 'getDokumenBadanHukum']);
+Route::post('/bumdes/link-document', [BumdesController::class, 'linkDocument']);
+Route::apiResource('/bumdes', BumdesController::class);
+Route::post('/login/desa', [BumdesController::class, 'loginByDesa']);
+Route::get('/identitas-bumdes', [BumdesController::class, 'index']); // Untuk mendapatkan data identitas
+
+// Routes untuk Desa dan Sinkronisasi
+Route::get('/desas', [DesaController::class, 'index']);
+Route::get('/desas/sync-preview', [DesaController::class, 'previewVillageCodeSync']);
+Route::post('/desas/sync-bumdes', [DesaController::class, 'syncBumdesVillageCodes']);
+
 // Routes dengan autentikasi
 Route::middleware(['auth:sanctum'])->group(function () {
-
-    // Routes untuk Bumdes
-    Route::apiResource('/bumdes', BumdesController::class);
-    Route::get('/bumdes/search', [BumdesController::class, 'search']);
-    Route::post('/login/desa', [BumdesController::class, 'loginByDesa']);
-    Route::get('/identitas-bumdes', [BumdesController::class, 'index']); // Untuk mendapatkan data identitas
 
     // Routes untuk Perjalanan Dinas (dengan auth untuk superadmin dan admin bidang)
     Route::prefix('perjadin')->group(function () {
         Route::get('/dashboard', [PerjadinDashboardController::class, 'index']);
         Route::get('/dashboard/weekly-schedule', [PerjadinDashboardController::class, 'weeklySchedule']);
-        Route::get('/statistik-perjadin', [PerjadinStatistikController::class, 'getStatistikPerjadin']);
+        Route::get('/statistik', [PerjadinStatistikController::class, 'getStatistikPerjadin']);
 
-        Route::middleware(['auth:sanctum'])->group(function () {
-            Route::get('/bidang', [PerjadinBidangController::class, 'index']);
-            Route::get('/personil/{bidang_id}', [PerjadinPersonilController::class, 'getByBidang']);
-            Route::apiResource('/kegiatan', PerjadinKegiatanController::class);
-            Route::get('/check-personnel-conflict', [PerjadinKegiatanController::class, 'checkPersonnelConflict']);
-        });
-    });
-
-    // Routes yang memerlukan role khusus
-    Route::prefix('perjadin')->middleware(['auth:sanctum', 'role:superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa'])->group(function () {
-        Route::get('/kegiatan/export-excel', [PerjadinKegiatanController::class, 'exportExcel']);
+        Route::get('/bidang', [PerjadinBidangController::class, 'index']);
+        Route::get('/personil/{bidang_id}', [PerjadinPersonilController::class, 'getByBidang']);
+        Route::apiResource('/kegiatan', PerjadinKegiatanController::class);
+        Route::get('/check-personnel-conflict', [PerjadinKegiatanController::class, 'checkPersonnelConflict']);
+        
+        // Export routes - moved out of nested middleware to avoid conflicts
+        Route::get('/kegiatan/export-data', [PerjadinKegiatanController::class, 'exportData']);
     });
 
-    // Routes untuk data referensi Kecamatan dan Desa
-    Route::get('/kecamatans', function () {
-        return response()->json(['data' => Kecamatan::all(['id', 'kode', 'nama'])]);
-    });
-    Route::get('/desas', function () {
-        return response()->json(['data' => Desa::with('kecamatan:id,nama')->get(['id', 'kecamatan_id', 'kode', 'nama'])]);
-    });
-    Route::get('/desas/by-kecamatan/{kecamatan_id}', function ($kecamatan_id) {
-        return response()->json(['data' => Desa::where('kecamatan_id', $kecamatan_id)->get(['id', 'kode', 'nama'])]);
-    });
 }); // End of auth:sanctum middleware group
 
-Route::get('/test-storage', function () {
-    $path = storage_path('app/public/test-folder');
 
-    echo "Mencoba membuat direktori di: " . $path . "<br>";
 
-    try {
-        // Coba buat direktori
-        if (!File::exists($path)) {
-            File::makeDirectory($path, 0775, true, true);
-            echo "STATUS: Berhasil membuat folder.<br>";
-        } else {
-            echo "STATUS: Folder sudah ada.<br>";
-        }
-
-        // Coba tulis file
-        $file_path = $path . '/test.txt';
-        File::put($file_path, 'Tes tulis file berhasil pada ' . now());
-        echo "STATUS: Berhasil menulis file di: " . $file_path . "<br>";
-
-        return "KESIMPULAN: Izin akses tulis (write permission) BERFUNGSI.";
-    } catch (\Exception $e) {
-        // Jika gagal, tampilkan pesan error yang sebenarnya
-        return "KESIMPULAN: GAGAL. Pesan Error: " . $e->getMessage();
-    }
+// Routes untuk data referensi Kecamatan dan Desa (tanpa autentikasi untuk BUMDES form)
+Route::get('/kecamatans', function () {
+    return response()->json(['data' => Kecamatan::all(['id', 'kode', 'nama'])]);
 });
+Route::get('/desas', function () {
+    return response()->json(['data' => Desa::with('kecamatan:id,nama')->get(['id', 'kecamatan_id', 'kode', 'nama'])]);
+});
+Route::get('/desas/by-kecamatan/{kecamatan_id}', function ($kecamatan_id) {
+    return response()->json(['data' => Desa::where('kecamatan_id', $kecamatan_id)->get(['id', 'kode', 'nama'])]);
+});
+
+
 
 Route::middleware(['auth:sanctum', 'role:desa'])->prefix('desa')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);

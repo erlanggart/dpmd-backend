@@ -1,8 +1,9 @@
 <?php
 
-// dpmd-backend/app/Http/Controllers/BidangController.php
-namespace App\Http\Controllers;
-use App\Models\Bidang;
+// dpmd-backend/app/Http/Controllers/Api/ApiPerjadin/BidangController.php
+namespace App\Http\Controllers\Api\ApiPerjadin;
+use App\Http\Controllers\Controller;
+use App\Models\ModelsPerjadin\Bidang;
 
 class BidangController extends Controller
 {

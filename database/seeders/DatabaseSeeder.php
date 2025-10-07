@@ -20,6 +20,10 @@ class DatabaseSeeder extends Seeder
             WilayahUserSeeder::class,
             BidangUserSeeder::class,
             DisposisiUserSeeder::class, // <-- Seeder untuk akun disposisi
+            BidangPerjadinSeeder::class,
+            BumdesTableSeeder::class,
+            PersonilSeeder::class,
+
         ]);
     }
 }
