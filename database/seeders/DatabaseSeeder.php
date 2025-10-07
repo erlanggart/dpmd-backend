@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Perjadin\Kegiatan;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -14,16 +15,17 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            RoleSeeder::class,
             MasterDataSeeder::class, // <-- Panggil ini dulu
             UserSeeder::class,
             WilayahUserSeeder::class,
             BidangUserSeeder::class,
-            DisposisiUserSeeder::class, // <-- Seeder untuk akun disposisi
+            DisposisiUserSeeder::class,
             BidangPerjadinSeeder::class,
             BumdesTableSeeder::class,
-            PersonilSeeder::class,
-
+            KegiatanSeeder::class,
+            MusdesusTargetDesaSeeder::class,
+            PersonilSeeder::class
+            // <-- Seeder untuk akun disposisi
         ]);
     }
 }
