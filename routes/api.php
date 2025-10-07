@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\Desa\AparaturDesaController;
 use App\Http\Controllers\Api\MusdesusMonitoringController;
 
 use App\Http\Controllers\Api\BumdesController;
+use App\Http\Controllers\DesaController;
 use App\Http\Controllers\Api\Perjadin\KegiatanController as PerjadinKegiatanController;
 use App\Http\Controllers\Api\Perjadin\DashboardController as PerjadinDashboardController;
 use App\Http\Controllers\Api\Perjadin\BidangController as PerjadinBidangController;
@@ -193,10 +194,16 @@ Route::middleware(['auth:sanctum'])->get('/me', function (Request $request) {
 });
 
 // Routes untuk Bumdes (tanpa autentikasi untuk testing)
-Route::apiResource('/bumdes', BumdesController::class);
+Route::get('/bumdes/statistics', [BumdesController::class, 'statistics']);
 Route::get('/bumdes/search', [BumdesController::class, 'search']);
+Route::apiResource('/bumdes', BumdesController::class);
 Route::post('/login/desa', [BumdesController::class, 'loginByDesa']);
 Route::get('/identitas-bumdes', [BumdesController::class, 'index']); // Untuk mendapatkan data identitas
+
+// Routes untuk Desa dan Sinkronisasi
+Route::get('/desas', [DesaController::class, 'index']);
+Route::get('/desas/sync-preview', [DesaController::class, 'previewVillageCodeSync']);
+Route::post('/desas/sync-bumdes', [DesaController::class, 'syncBumdesVillageCodes']);
 
 // Routes dengan autentikasi
 Route::middleware(['auth:sanctum'])->group(function () {
