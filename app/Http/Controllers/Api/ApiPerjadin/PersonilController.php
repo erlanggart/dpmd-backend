@@ -1,8 +1,9 @@
 <?php
 
-// dpmd-backend/app/Http/Controllers/PersonilController.php
-namespace App\Http\Controllers;
-use App\Models\Personil;
+// dpmd-backend/app/Http/Controllers/Api/ApiPerjadin/PersonilController.php
+namespace App\Http\Controllers\Api\ApiPerjadin;
+use App\Http\Controllers\Controller;
+use App\Models\ModelsPerjadin\Personil;
 use Illuminate\Http\Request;
 
 class PersonilController extends Controller

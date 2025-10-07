@@ -57,6 +57,7 @@ class KegiatanController extends Controller
         $kegiatan = $query->paginate($request->limit ?? 5);
 
         return response()->json([
+            'success' => true,
             'data' => $kegiatan->items(),
             'total' => $kegiatan->total(),
             'current_page' => $kegiatan->currentPage(),
@@ -70,10 +71,10 @@ class KegiatanController extends Controller
             ->find($id);
 
         if (!$kegiatan) {
-            return response()->json(['status' => 'error', 'message' => 'Kegiatan tidak ditemukan.'], 404);
+            return response()->json(['success' => false, 'message' => 'Kegiatan tidak ditemukan.'], 404);
         }
 
-        return response()->json($kegiatan);
+        return response()->json(['success' => true, 'data' => $kegiatan]);
     }
 
     public function store(Request $request)
@@ -102,10 +103,10 @@ class KegiatanController extends Controller
                 }
             }
             DB::commit();
-            return response()->json(['status' => 'success', 'message' => 'Kegiatan berhasil ditambahkan.']);
+            return response()->json(['success' => true, 'message' => 'Kegiatan berhasil ditambahkan.']);
         } catch (\Exception $e) {
             DB::rollback();
-            return response()->json(['status' => 'error', 'message' => 'Gagal menambahkan kegiatan. Error: ' . $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Gagal menambahkan kegiatan. Error: ' . $e->getMessage()], 500);
         }
     }
 
@@ -139,10 +140,10 @@ class KegiatanController extends Controller
             }
 
             DB::commit();
-            return response()->json(['status' => 'success', 'message' => 'Kegiatan berhasil diperbarui.']);
+            return response()->json(['success' => true, 'message' => 'Kegiatan berhasil diperbarui.']);
         } catch (\Exception $e) {
             DB::rollback();
-            return response()->json(['status' => 'error', 'message' => 'Gagal memperbarui kegiatan. Error: ' . $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Gagal memperbarui kegiatan. Error: ' . $e->getMessage()], 500);
         }
     }
 
@@ -162,64 +163,7 @@ class KegiatanController extends Controller
         }
     }
     
-    public function exportExcel()
-    {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Rekap Kegiatan');
-        
-        $headers = ['Nomor', 'Nama Kegiatan', 'Nomor SP', 'Tanggal', 'Tempat', 'Bidang', 'Personil', 'Keterangan'];
-        $sheet->fromArray([$headers], NULL, 'A1');
-        
-        $headerStyle = [
-            'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF121A4B']],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
-        ];
-        $sheet->getStyle('A1:H1')->applyFromArray($headerStyle);
-        $sheet->getRowDimension(1)->setRowHeight(30);
 
-        $data = Kegiatan::with('details.bidang')
-            ->orderBy('tanggal_mulai', 'desc')
-            ->get();
-        
-        $rowData = [];
-        $no = 1;
-        foreach ($data as $row) {
-            $tanggal = date('d-m-Y', strtotime($row->tanggal_mulai)) . ' s.d. ' . date('d-m-Y', strtotime($row->tanggal_selesai));
-            
-            $bidangList = implode(', ', $row->details->map(fn($detail) => $detail->bidang->nama)->toArray());
-            $personilList = implode(', ', $row->details->map(fn($detail) => $detail->personil)->toArray());
-            
-            $rowData[] = [
-                $no++,
-                $row->nama_kegiatan,
-                $row->nomor_sp,
-                $tanggal,
-                $row->lokasi,
-                $bidangList,
-                $personilList,
-                $row->keterangan,
-            ];
-        }
-        $sheet->fromArray($rowData, NULL, 'A2');
-        
-        $dataStyle = ['borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]];
-        $highestRow = $sheet->getHighestRow();
-        $sheet->getStyle('A2:H' . $highestRow)->applyFromArray($dataStyle);
-        
-        foreach (range('A', 'H') as $columnID) {
-            $sheet->getColumnDimension($columnID)->setAutoSize(true);
-        }
-        
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="rekap_kegiatan.xlsx"');
-        header('Cache-Control: max-age=0');
-        $writer = new Xlsx($spreadsheet);
-        $writer->save('php://output');
-        exit;
-    }
 
     public function checkPersonnelConflict(Request $request)
     {
@@ -281,6 +225,75 @@ class KegiatanController extends Controller
             return response()->json([
                 'conflicts' => [],
                 'message' => 'Gagal mengecek konflik: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+
+    /**
+     * 📄 Get formatted data for PDF export (frontend will handle PDF generation)
+     */
+    public function exportData(Request $request)
+    {
+        try {
+            // Get filtered data
+            $query = Kegiatan::with('details.bidang')
+                ->latest('tanggal_mulai');
+
+            if ($request->filled('search')) {
+                $search = '%' . $request->search . '%';
+                $query->where(function($q) use ($search) {
+                    $q->where('nama_kegiatan', 'like', $search)
+                      ->orWhere('nomor_sp', 'like', $search)
+                      ->orWhere('lokasi', 'like', $search)
+                      ->orWhere('keterangan', 'like', $search);
+                })->orWhereHas('details', function ($q) use ($search) {
+                    $q->where('personil', 'like', $search);
+                });
+            }
+            
+            if ($request->filled('bidang')) {
+                $query->whereHas('details', function ($q) use ($request) {
+                    $q->where('id_bidang', $request->bidang);
+                });
+            }
+
+            $kegiatan = $query->get();
+
+            // Format data for export
+            $formattedData = $kegiatan->map(function($item) {
+                $personilCount = $item->details->sum(function($detail) {
+                    return count(array_filter(explode(', ', $detail->personil ?? '')));
+                });
+
+                $bidangList = $item->details->pluck('bidang.nama')->filter()->join(', ');
+
+                return [
+                    'id' => $item->id,
+                    'nomor_sp' => $item->nomor_sp ?? '-',
+                    'nama_kegiatan' => $item->nama_kegiatan ?? '-',
+                    'lokasi' => $item->lokasi ?? '-',
+                    'tanggal_mulai' => $item->tanggal_mulai,
+                    'tanggal_selesai' => $item->tanggal_selesai,
+                    'personil_count' => $personilCount,
+                    'bidang_list' => $bidangList ?: '-',
+                    'keterangan' => $item->keterangan ?? '-',
+                    'details' => $item->details
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $formattedData,
+                'total' => $formattedData->count(),
+                'exported_at' => now()->format('Y-m-d H:i:s')
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data untuk export: ' . $e->getMessage()
             ], 500);
         }
     }

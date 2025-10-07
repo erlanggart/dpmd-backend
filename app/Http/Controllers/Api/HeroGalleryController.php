@@ -35,7 +35,7 @@ class HeroGalleryController extends Controller
 
     public function store(Request $request)
     {
-        // DEBUG 1: Cek apakah file benar-benar ada di request dan valid
+
         if (!$request->hasFile('image') || !$request->file('image')->isValid()) {
             Log::error('UPLOAD GAGAL: Tidak ada file gambar atau file tidak valid.');
             return response()->json(['message' => 'Tidak ada file gambar yang valid dalam request.'], 400);
@@ -53,7 +53,7 @@ class HeroGalleryController extends Controller
             // Menggunakan disk 'public_uploads' yang menyimpan ke public/uploads
             $path = $file->store('hero-gallery', 'public_uploads');
 
-            // DEBUG 2: Cek apakah path berhasil dibuat (tidak null atau false)
+
             if (!$path) {
                 Log::error('UPLOAD GAGAL: Fungsi store() mengembalikan path yang tidak valid.');
                 return response()->json(['message' => 'Gagal menyimpan file ke disk.'], 500);
@@ -68,12 +68,12 @@ class HeroGalleryController extends Controller
 
             return response()->json($gallery, 201);
         } catch (ValidationException $e) {
-            // DEBUG 3: Menangkap error validasi secara spesifik
+
             Log::error('UPLOAD GAGAL - ERROR VALIDASI: ', $e->errors());
             // Mengembalikan error 422 dengan detail validasi
             return response()->json(['message' => 'Data yang diberikan tidak valid.', 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
-            // DEBUG 4: Menangkap semua error lainnya, termasuk izin folder
+
             $errorMessage = $e->getMessage();
             $errorCode = $e->getCode();
 

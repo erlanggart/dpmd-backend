@@ -65,26 +65,33 @@ class StatistikController extends Controller
                 ->get();
 
             return response()->json([
-                'totalPerjalanan' => $totalPerjalanan,
-                'totalBidang' => $totalBidang,
-                'totalPersonil' => $totalPersonil,
-                'grafikData' => $grafikData,
-                'topBidang' => $topBidang,
-                'personilPerBidang' => $personilPerBidang,
-                'trendData' => [] // Untuk keperluan masa depan
+                'success' => true,
+                'data' => [
+                    'totalPerjalanan' => $totalPerjalanan,
+                    'totalBidang' => $totalBidang,
+                    'totalPersonil' => $totalPersonil,
+                    'grafikData' => $grafikData,
+                    'topBidang' => $topBidang,
+                    'personilPerBidang' => $personilPerBidang,
+                    'trendData' => [] // Untuk keperluan masa depan
+                ]
             ]);
 
         } catch (\Exception $e) {
             // Kembalikan error untuk debugging
             return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data statistik',
                 'error' => $e->getMessage(),
-                'totalPerjalanan' => 0,
-                'totalBidang' => 0,
-                'totalPersonil' => 0,
-                'grafikData' => [],
-                'topBidang' => [],
-                'personilPerBidang' => [],
-                'trendData' => []
+                'data' => [
+                    'totalPerjalanan' => 0,
+                    'totalBidang' => 0,
+                    'totalPersonil' => 0,
+                    'grafikData' => [],
+                    'topBidang' => [],
+                    'personilPerBidang' => [],
+                    'trendData' => []
+                ]
             ], 500);
         }
     }

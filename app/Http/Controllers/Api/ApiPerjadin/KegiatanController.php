@@ -1,9 +1,10 @@
 <?php
 
-// dpmd-backend/app/Http/Controllers/KegiatanController.php
-namespace App\Http\Controllers;
-use App\Models\Kegiatan;
-use App\Models\KegiatanBidang;
+// dpmd-backend/app/Http/Controllers/Api/ApiPerjadin/KegiatanController.php
+namespace App\Http\Controllers\Api\ApiPerjadin;
+use App\Http\Controllers\Controller;
+use App\Models\ModelsPerjadin\Kegiatan;
+use App\Models\ModelsPerjadin\KegiatanBidang;
 use App\Services\KegiatanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
