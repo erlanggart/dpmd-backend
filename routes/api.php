@@ -193,9 +193,12 @@ Route::middleware(['auth:sanctum'])->get('/me', function (Request $request) {
     return response()->json(['user' => $request->user()]);
 });
 
-// Routes untuk Bumdes (tanpa autentikasi untuk testing)
+// Routes untuk BUMDES  
 Route::get('/bumdes/statistics', [BumdesController::class, 'statistics']);
 Route::get('/bumdes/search', [BumdesController::class, 'search']);
+Route::get('/bumdes/check-desa/{kode_desa}', [BumdesController::class, 'checkByKodeDesa']);
+Route::get('/bumdes/dokumen-badan-hukum', [BumdesController::class, 'getDokumenBadanHukum']);
+Route::post('/bumdes/link-document', [BumdesController::class, 'linkDocument']);
 Route::apiResource('/bumdes', BumdesController::class);
 Route::post('/login/desa', [BumdesController::class, 'loginByDesa']);
 Route::get('/identitas-bumdes', [BumdesController::class, 'index']); // Untuk mendapatkan data identitas
@@ -238,31 +241,7 @@ Route::get('/desas/by-kecamatan/{kecamatan_id}', function ($kecamatan_id) {
     return response()->json(['data' => Desa::where('kecamatan_id', $kecamatan_id)->get(['id', 'kode', 'nama'])]);
 });
 
-Route::get('/test-storage', function () {
-    $path = storage_path('app/public/test-folder');
 
-    echo "Mencoba membuat direktori di: " . $path . "<br>";
-
-    try {
-        // Coba buat direktori
-        if (!File::exists($path)) {
-            File::makeDirectory($path, 0775, true, true);
-            echo "STATUS: Berhasil membuat folder.<br>";
-        } else {
-            echo "STATUS: Folder sudah ada.<br>";
-        }
-
-        // Coba tulis file
-        $file_path = $path . '/test.txt';
-        File::put($file_path, 'Tes tulis file berhasil pada ' . now());
-        echo "STATUS: Berhasil menulis file di: " . $file_path . "<br>";
-
-        return "KESIMPULAN: Izin akses tulis (write permission) BERFUNGSI.";
-    } catch (\Exception $e) {
-        // Jika gagal, tampilkan pesan error yang sebenarnya
-        return "KESIMPULAN: GAGAL. Pesan Error: " . $e->getMessage();
-    }
-});
 
 Route::middleware(['auth:sanctum', 'role:desa'])->prefix('desa')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
