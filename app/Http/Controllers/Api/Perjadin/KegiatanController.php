@@ -9,6 +9,7 @@ use App\Models\Perjadin\KegiatanBidang;
 use App\Services\KegiatanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -79,6 +80,31 @@ class KegiatanController extends Controller
 
     public function store(Request $request)
     {
+        // Debug: Log incoming data
+        Log::info('KegiatanController@store - Incoming data:', $request->all());
+        
+        // Validation
+        try {
+            $request->validate([
+                'nama_kegiatan' => 'required|string|max:255',
+                'nomor_sp' => 'required|string|max:100',
+                'tanggal_mulai' => 'required|date',
+                'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+                'lokasi' => 'required|string|max:255',
+                'keterangan' => 'nullable|string',
+                'personil_bidang_list' => 'required|array|min:1',
+                'personil_bidang_list.*.id_bidang' => 'required|integer',
+                'personil_bidang_list.*.personil' => 'required|array|min:1',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('KegiatanController@store - Validation errors:', $e->errors());
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'Data tidak valid',
+                'errors' => $e->errors()
+            ], 422);
+        }
+
         // $conflictMessage = $this->kegiatanService->checkPersonilConflict(
         //     $request->personil_bidang_list,
         //     $request->tanggal_mulai,
@@ -103,10 +129,29 @@ class KegiatanController extends Controller
                 }
             }
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Kegiatan berhasil ditambahkan.']);
+            
+            // Load kegiatan with details for response
+            $kegiatan->load('details.bidang');
+            
+            return response()->json([
+                'status' => 'success', 
+                'message' => 'Kegiatan berhasil ditambahkan.', 
+                'data' => $kegiatan
+            ], 201);
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollback();
+            Log::error('Database error in KegiatanController@store: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'Gagal menyimpan data ke database. Silakan coba lagi.'
+            ], 500);
         } catch (\Exception $e) {
             DB::rollback();
-            return response()->json(['success' => false, 'message' => 'Gagal menambahkan kegiatan. Error: ' . $e->getMessage()], 500);
+            Log::error('General error in KegiatanController@store: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'Terjadi kesalahan sistem. Silakan hubungi administrator.'
+            ], 500);
         }
     }
 
@@ -140,10 +185,29 @@ class KegiatanController extends Controller
             }
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Kegiatan berhasil diperbarui.']);
+            
+            // Load kegiatan with details for response
+            $kegiatan->load('details.bidang');
+            
+            return response()->json([
+                'status' => 'success', 
+                'message' => 'Kegiatan berhasil diperbarui.', 
+                'data' => $kegiatan
+            ], 200);
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollback();
+            Log::error('Database error in KegiatanController@update: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'Gagal memperbarui data di database. Silakan coba lagi.'
+            ], 500);
         } catch (\Exception $e) {
             DB::rollback();
-            return response()->json(['success' => false, 'message' => 'Gagal memperbarui kegiatan. Error: ' . $e->getMessage()], 500);
+            Log::error('General error in KegiatanController@update: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'Terjadi kesalahan sistem. Silakan hubungi administrator.'
+            ], 500);
         }
     }
 

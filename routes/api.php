@@ -207,6 +207,7 @@ Route::get('/bumdes/statistics', [BumdesController::class, 'statistics']);
 Route::get('/bumdes/search', [BumdesController::class, 'search']);
 Route::get('/bumdes/check-desa/{kode_desa}', [BumdesController::class, 'checkByKodeDesa']);
 Route::get('/bumdes/dokumen-badan-hukum', [BumdesController::class, 'getDokumenBadanHukum']);
+Route::get('/bumdes/laporan-keuangan', [BumdesController::class, 'getLaporanKeuangan']);
 Route::post('/bumdes/link-document', [BumdesController::class, 'linkDocument']);
 Route::apiResource('/bumdes', BumdesController::class);
 Route::post('/login/desa', [BumdesController::class, 'loginByDesa']);

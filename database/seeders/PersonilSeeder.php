@@ -62,7 +62,7 @@ class PersonilSeeder extends Seeder
             ['id_bidang' => $bidangIds['Pemberdayaan Masyarakat Desa'], 'nama_personil' => 'AISYAH ARGIANTI S.Sos'],
             ['id_bidang' => $bidangIds['Pemberdayaan Masyarakat Desa'], 'nama_personil' => 'RAHMAT IGO WIBISONO S.Tr. I.P.'],
 
-            // Sarana Prasarana Kewilayahan dan Ekonomi Desa (SPKED)
+            // kekayaan dan keuangan desa
             ['id_bidang' => $bidangIds['Kekayaan dan Keuangan Desa'], 'nama_personil' => 'ALI NASRULLAH S.H.'],
             ['id_bidang' => $bidangIds['Kekayaan dan Keuangan Desa'], 'nama_personil' => 'SELO ENDARTI'],
             ['id_bidang' => $bidangIds['Kekayaan dan Keuangan Desa'], 'nama_personil' => 'LINA PARLINA A. Md'],
@@ -74,7 +74,7 @@ class PersonilSeeder extends Seeder
             ['id_bidang' => $bidangIds['Kekayaan dan Keuangan Desa'], 'nama_personil' => 'SUHADA S.E.'],
             ['id_bidang' => $bidangIds['Kekayaan dan Keuangan Desa'], 'nama_personil' => 'CARISSA AZARINE S.Psi'],
 
-            // Kekayaan dan Keuangan Desa
+            // pemerintahan desa
             ['id_bidang' => $bidangIds['Pemerintahan Desa'], 'nama_personil' => 'FEBRIYANTI S.STP. M.Si'],
             ['id_bidang' => $bidangIds['Pemerintahan Desa'], 'nama_personil' => 'H. ACHMAD HADIYATUL M S.Sos. MM'],
             ['id_bidang' => $bidangIds['Pemerintahan Desa'], 'nama_personil' => 'R. LUKMAN S.E. M.A'],
@@ -87,7 +87,7 @@ class PersonilSeeder extends Seeder
             ['id_bidang' => $bidangIds['Pemerintahan Desa'], 'nama_personil' => 'AYU WANDIRA S.E.'],
             ['id_bidang' => $bidangIds['Pemerintahan Desa'], 'nama_personil' => 'DHAMARA NURDIANSYAH'],
             
-            // Sarana Prasarana Kewilayahan dan Ekonomi Desa (KKD)
+            // Sarana Prasarana Kewilayahan dan Ekonomi Desa (SPKED)
             ['id_bidang' => $bidangIds['Sarana Prasarana Kewilayahan dan Ekonomi Desa'], 'nama_personil' => 'MIRA DEWI SITANGGANG S.E. M.M.'],
             ['id_bidang' => $bidangIds['Sarana Prasarana Kewilayahan dan Ekonomi Desa'], 'nama_personil' => 'HARIF WAHYUDI S.Kom'],
             ['id_bidang' => $bidangIds['Sarana Prasarana Kewilayahan dan Ekonomi Desa'], 'nama_personil' => 'IRMAWATI SARI S.E.'],
@@ -98,7 +98,7 @@ class PersonilSeeder extends Seeder
             ['id_bidang' => $bidangIds['Sarana Prasarana Kewilayahan dan Ekonomi Desa'], 'nama_personil' => 'SRI PURWANINGSIH S.E.'],
             ['id_bidang' => $bidangIds['Sarana Prasarana Kewilayahan dan Ekonomi Desa'], 'nama_personil' => 'SITI RAHMAH S.E.'],
             
-            // Tenaga Alih Daya (TAD)
+            // Tenaga keamanan
             ['id_bidang' => $bidangIds['Tenaga Keamanan'], 'nama_personil' => 'Wawan Darmawan'],
             ['id_bidang' => $bidangIds['Tenaga Keamanan'], 'nama_personil' => 'Suratman'],
             ['id_bidang' => $bidangIds['Tenaga Keamanan'], 'nama_personil' => 'Adi Hermawan'],
@@ -108,7 +108,8 @@ class PersonilSeeder extends Seeder
             ['id_bidang' => $bidangIds['Tenaga Keamanan'], 'nama_personil' => 'Atika Seknun'],
             ['id_bidang' => $bidangIds['Tenaga Keamanan'], 'nama_personil' => 'Iyah Samsiyah'],
 
-            // Tenaga Keamanan
+            // Tenaga Kebersihan
+            ['id_bidang' => $bidangIds['Tenaga Kebersihan'], 'nama_personil' => 'SUKARMIN'],
             ['id_bidang' => $bidangIds['Tenaga Kebersihan'], 'nama_personil' => 'Rini'],
             ['id_bidang' => $bidangIds['Tenaga Kebersihan'], 'nama_personil' => 'Erwin Yuniawan Kusuma'],
             ['id_bidang' => $bidangIds['Tenaga Kebersihan'], 'nama_personil' => 'Umar'],
@@ -118,11 +119,52 @@ class PersonilSeeder extends Seeder
             ['id_bidang' => $bidangIds['Tenaga Kebersihan'], 'nama_personil' => 'Beni Permana'],
             ['id_bidang' => $bidangIds['Tenaga Kebersihan'], 'nama_personil' => 'Basri Ramadan'],
 
-            // Tenaga Kebersihan
-            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Si'],
-            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Ahmad'],
-            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Budi '],
-            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Ani'],
+            // Tenaga alih daya
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Dian Munandar'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Rachmat Ramadhan, S. Ak'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Arfa Cesaria, A. Md'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Nina Melinda, S.Pd'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Mas Cecep Tino Noviandi, A. Md'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Chintia Ainun Fadhilah, S.M.'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Rizki Iriani, A. Md'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Fariz Andifa, S.Kom'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Imam Septiyansyah, S. Kom'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Erma Diah Vitaloka, S.T.'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Zaenudin, S. Pd'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Neneng Muflihah, S.E'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Dian Noviani, S. IK'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Gema Alifa Eastiana , S.I.Kom'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Muhamad Rafli, S.E.'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Aulya Ardhi Fauqa, S.H.'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Sandra Febri Ramdhiani, S.H.'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Muhammad Fahmi, S. Kom'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Moch. Rizki Utama , S.P.W.K'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Denna S. Dahmar Hidayati, S. Ak'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Fahri Setya Gunawan'],
+            ['id_bidang' => $bidangIds['Tenaga Alih Daya'], 'nama_personil' => 'Devin Prasetia Bastian, S.P.W.K'],
+            
+ 
+ 
+
+ 
+
+ 
+ 
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
         ];
 
         DB::table('personil')->insert($personilData);
