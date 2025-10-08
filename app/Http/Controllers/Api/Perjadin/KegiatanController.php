@@ -80,6 +80,9 @@ class KegiatanController extends Controller
 
     public function store(Request $request)
     {
+        // Debug: Log incoming data
+        Log::info('KegiatanController@store - Incoming data:', $request->all());
+        
         // Validation
         try {
             $request->validate([
@@ -88,12 +91,13 @@ class KegiatanController extends Controller
                 'tanggal_mulai' => 'required|date',
                 'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
                 'lokasi' => 'required|string|max:255',
-                'anggaran' => 'required|numeric|min:0',
+                'keterangan' => 'nullable|string',
                 'personil_bidang_list' => 'required|array|min:1',
                 'personil_bidang_list.*.id_bidang' => 'required|integer',
                 'personil_bidang_list.*.personil' => 'required|array|min:1',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('KegiatanController@store - Validation errors:', $e->errors());
             return response()->json([
                 'status' => 'error', 
                 'message' => 'Data tidak valid',
