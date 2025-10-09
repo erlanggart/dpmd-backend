@@ -2,8 +2,6 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\File;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
@@ -14,10 +12,8 @@ use App\Http\Controllers\Api\HeroGalleryController;
 use App\Http\Controllers\Api\ProfilDesaController;
 use App\Http\Controllers\Api\Desa\ProdukHukumController;
 use App\Http\Controllers\Api\Desa\AparaturDesaController;
-use App\Http\Controllers\Api\MusdesusMonitoringController;
 
 use App\Http\Controllers\Api\BumdesController;
-use App\Http\Controllers\DesaController;
 use App\Http\Controllers\Api\Perjadin\KegiatanController as PerjadinKegiatanController;
 use App\Http\Controllers\Api\Perjadin\DashboardController as PerjadinDashboardController;
 use App\Http\Controllers\Api\Perjadin\BidangController as PerjadinBidangController;
@@ -26,6 +22,7 @@ use App\Http\Controllers\Api\Perjadin\StatistikController as PerjadinStatistikCo
 use App\Models\Kecamatan;
 use App\Models\Desa;
 
+use Illuminate\Support\Facades\File;
 
 Route::middleware(['auth:sanctum', 'role:superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa'])->group(function () {
     Route::get('/users', [UserController::class, 'index']);
@@ -52,8 +49,6 @@ Route::get('/products', [ProductController::class, 'index']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/login/bidang', [AuthController::class, 'loginBidang']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
-
-
 
 // Admin verification endpoint for secure delete operations
 Route::post('/admin/verify-login', [AuthController::class, 'verifyAdminLogin']);
@@ -139,8 +134,6 @@ Route::get('/public/musdesus/stats', function () {
         // Summary stats
         $totalDesaUpload = \App\Models\Musdesus::distinct('desa_id')->count('desa_id');
         $totalKecamatanUpload = \App\Models\Musdesus::distinct('kecamatan_id')->count('kecamatan_id');
-
-        
         $totalDesa = \App\Models\Desa::count();
         $totalKecamatan = \App\Models\Kecamatan::count();
         
@@ -171,22 +164,6 @@ Route::get('/public/musdesus/stats', function () {
 });
 
 // Public musdesus files list endpoint
-// Serve uploaded files under /api/uploads/{folder}/{filename}
-Route::get('uploads/{folder}/{filename}', function ($folder, $filename) {
-    // sanitize inputs to prevent directory traversal
-    $folder = basename($folder);
-    $filename = basename($filename);
-
-    $publicPath = public_path("uploads/{$folder}/{$filename}");
-
-    if (!\Illuminate\Support\Facades\File::exists($publicPath)) {
-        return response()->json(['message' => 'File not found'], 404);
-    }
-
-    // let the framework handle content-type and streaming
-    return response()->file($publicPath);
-});
-
 Route::get('/public/musdesus/files', function () {
     try {
         $files = \App\Models\Musdesus::with(['desa', 'kecamatan'])
@@ -212,21 +189,11 @@ Route::middleware(['auth:sanctum'])->get('/me', function (Request $request) {
     return response()->json(['user' => $request->user()]);
 });
 
-// Routes untuk BUMDES  
-Route::get('/bumdes/statistics', [BumdesController::class, 'statistics']);
-Route::get('/bumdes/search', [BumdesController::class, 'search']);
-Route::get('/bumdes/check-desa/{kode_desa}', [BumdesController::class, 'checkByKodeDesa']);
-Route::get('/bumdes/dokumen-badan-hukum', [BumdesController::class, 'getDokumenBadanHukum']);
-Route::get('/bumdes/laporan-keuangan', [BumdesController::class, 'getLaporanKeuangan']);
-Route::post('/bumdes/link-document', [BumdesController::class, 'linkDocument']);
+// Routes untuk Bumdes (tanpa autentikasi untuk testing)
 Route::apiResource('/bumdes', BumdesController::class);
+Route::get('/bumdes/search', [BumdesController::class, 'search']);
 Route::post('/login/desa', [BumdesController::class, 'loginByDesa']);
 Route::get('/identitas-bumdes', [BumdesController::class, 'index']); // Untuk mendapatkan data identitas
-
-// Routes untuk Desa dan Sinkronisasi
-Route::get('/desas', [DesaController::class, 'index']);
-Route::get('/desas/sync-preview', [DesaController::class, 'previewVillageCodeSync']);
-Route::post('/desas/sync-bumdes', [DesaController::class, 'syncBumdesVillageCodes']);
 
 // Routes dengan autentikasi
 Route::middleware(['auth:sanctum'])->group(function () {
@@ -237,58 +204,21 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/dashboard/weekly-schedule', [PerjadinDashboardController::class, 'weeklySchedule']);
         Route::get('/statistik', [PerjadinStatistikController::class, 'getStatistikPerjadin']);
 
-        Route::get('/bidang', [PerjadinBidangController::class, 'index']);
-        Route::get('/personil/{bidang_id}', [PerjadinPersonilController::class, 'getByBidang']);
-        Route::apiResource('/kegiatan', PerjadinKegiatanController::class);
-        Route::get('/check-personnel-conflict', [PerjadinKegiatanController::class, 'checkPersonnelConflict']);
-        
-        // Export routes - moved out of nested middleware to avoid conflicts
+        Route::middleware(['auth:sanctum'])->group(function () {
+            Route::get('/bidang', [PerjadinBidangController::class, 'index']);
+            Route::get('/personil/{bidang_id}', [PerjadinPersonilController::class, 'getByBidang']);
+            Route::apiResource('/kegiatan', PerjadinKegiatanController::class);
+            Route::get('/check-personnel-conflict', [PerjadinKegiatanController::class, 'checkPersonnelConflict']);
+        });
+    });
+
+    // Routes yang memerlukan role khusus
+    Route::prefix('perjadin')->middleware(['auth:sanctum', 'role:superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa'])->group(function () {
+        Route::get('/kegiatan/export-excel', [PerjadinKegiatanController::class, 'exportExcel']);
         Route::get('/kegiatan/export-data', [PerjadinKegiatanController::class, 'exportData']);
     });
 
 }); // End of auth:sanctum middleware group
-
-
-
-// Public testing endpoints for kelembagaan (temporary)
-Route::get('/desa/kelembagaan/summary', function () {
-    return response()->json([
-        'success' => true,
-        'data' => [
-            'rt' => 12,
-            'rw' => 8,
-            'posyandu' => 5,
-            'karang_taruna' => 1,
-            'lpm' => 1,
-            'pkk' => 1,
-            'satlinmas' => 1,
-            'karang_taruna_formed' => true,
-            'lpm_formed' => true,
-            'satlinmas_formed' => true,
-            'pkk_formed' => true,
-            'total' => 29
-        ]
-    ]);
-});
-
-Route::get('/desa/satlinmas', function () {
-    return response()->json([
-        'success' => true,
-        'data' => [
-            [
-                'id' => 1,
-                'nama_ketua' => 'Budi Santoso',
-                'jabatan' => 'Ketua Satlinmas',
-                'alamat' => 'RT 01/RW 01',
-                'no_hp' => '081234567890',
-                'status_kelembagaan' => 'aktif',
-                'tanggal_dibentuk' => '2024-01-15',
-                'created_at' => '2024-01-15T10:30:00.000000Z',
-                'updated_at' => '2024-01-15T10:30:00.000000Z'
-            ]
-        ]
-    ]);
-});
 
 // Routes untuk data referensi Kecamatan dan Desa (tanpa autentikasi untuk BUMDES form)
 Route::get('/kecamatans', function () {
@@ -301,7 +231,31 @@ Route::get('/desas/by-kecamatan/{kecamatan_id}', function ($kecamatan_id) {
     return response()->json(['data' => Desa::where('kecamatan_id', $kecamatan_id)->get(['id', 'kode', 'nama'])]);
 });
 
+Route::get('/test-storage', function () {
+    $path = storage_path('app/public/test-folder');
 
+    echo "Mencoba membuat direktori di: " . $path . "<br>";
+
+    try {
+        // Coba buat direktori
+        if (!File::exists($path)) {
+            File::makeDirectory($path, 0775, true, true);
+            echo "STATUS: Berhasil membuat folder.<br>";
+        } else {
+            echo "STATUS: Folder sudah ada.<br>";
+        }
+
+        // Coba tulis file
+        $file_path = $path . '/test.txt';
+        File::put($file_path, 'Tes tulis file berhasil pada ' . now());
+        echo "STATUS: Berhasil menulis file di: " . $file_path . "<br>";
+
+        return "KESIMPULAN: Izin akses tulis (write permission) BERFUNGSI.";
+    } catch (\Exception $e) {
+        // Jika gagal, tampilkan pesan error yang sebenarnya
+        return "KESIMPULAN: GAGAL. Pesan Error: " . $e->getMessage();
+    }
+});
 
 Route::middleware(['auth:sanctum', 'role:desa'])->prefix('desa')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
@@ -311,83 +265,6 @@ Route::middleware(['auth:sanctum', 'role:desa'])->prefix('desa')->group(function
     Route::put('/produk-hukum/status/{id}', [ProdukHukumController::class, 'updateStatus']);
     Route::apiResource('/aparatur-desa', AparaturDesaController::class);
     Route::post('/aparatur-desa/{id}', [AparaturDesaController::class, 'update']);
-    
-    // Temporary dummy endpoints for kelembagaan - return mock data
-    Route::get('/kelembagaan/summary', function () {
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'rt' => 12,
-                'rw' => 8,
-                'posyandu' => 5,
-                'karang_taruna' => 1,
-                'lpm' => 1,
-                'pkk' => 1,
-                'satlinmas' => 1,
-                'karang_taruna_formed' => true,
-                'lpm_formed' => true,
-                'satlinmas_formed' => true,
-                'pkk_formed' => true,
-                'total' => 29
-            ]
-        ]);
-    });
-    
-    Route::get('/kelembagaan/detailed-summary', function () {
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'rt_list' => [],
-                'rw_list' => [],
-                'posyandu_list' => [],
-                'karang_taruna' => null,
-                'lpm' => null,
-                'pkk' => null,
-                'satlinmas' => null,
-                'counts' => [
-                    'rt' => 12,
-                    'rw' => 8,
-                    'posyandu' => 5,
-                    'karang_taruna' => 1,
-                    'lpm' => 1,
-                    'pkk' => 1,
-                    'satlinmas' => 1
-                ]
-            ]
-        ]);
-    });
-    
-    // Temporary dummy endpoints for satlinmas
-    Route::get('/satlinmas', function () {
-        return response()->json([
-            'success' => true,
-            'data' => [
-                [
-                    'id' => 1,
-                    'nama_ketua' => 'Budi Santoso',
-                    'jabatan' => 'Ketua Satlinmas',
-                    'alamat' => 'RT 01/RW 01',
-                    'no_hp' => '081234567890',
-                    'status_kelembagaan' => 'aktif',
-                    'tanggal_dibentuk' => '2024-01-15',
-                    'created_at' => '2024-01-15T10:30:00.000000Z',
-                    'updated_at' => '2024-01-15T10:30:00.000000Z'
-                ]
-            ]
-        ]);
-    });
-    
-    Route::post('/satlinmas', function () {
-        return response()->json([
-            'success' => true,
-            'message' => 'Data satlinmas berhasil disimpan',
-            'data' => [
-                'id' => rand(1, 1000),
-                'created_at' => now(),
-                'updated_at' => now()
-            ]
-        ], 201);
-    });
 });
 
 // Routes untuk Musdesus (Public - tidak perlu auth)
@@ -397,8 +274,6 @@ Route::prefix('musdesus')->group(function () {
     Route::get('/check-desa/{desa_id}', [App\Http\Controllers\Api\MusdesusController::class, 'checkDesaUploadStatus']);
     Route::post('/upload', [App\Http\Controllers\Api\MusdesusController::class, 'store']);
     Route::get('/download/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'download']);
-    Route::get('/view/{filename}', [App\Http\Controllers\Api\MusdesusController::class, 'viewFile']);
-    Route::get('/download-file/{filename}', [App\Http\Controllers\Api\MusdesusController::class, 'downloadByFilename']);
 });
 
 // Routes untuk admin musdesus (perlu auth)
@@ -407,18 +282,7 @@ Route::middleware(['auth:sanctum', 'role:superadmin|sekretariat'])->prefix('admi
     Route::get('/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'show']);
     Route::put('/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'update']);
     Route::delete('/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'destroy']);
-    
-    // Routes untuk monitoring 37 desa target
-    Route::get('/monitoring/dashboard', [MusdesusMonitoringController::class, 'getDashboardData']);
-    Route::get('/monitoring/desa/{petugasId}', [MusdesusMonitoringController::class, 'getDesaDetail']);
 });
-
-// Public monitoring endpoint (read-only) untuk stats page
-Route::get('/public/musdesus/monitoring', [MusdesusMonitoringController::class, 'getPublicMonitoringData']);
-
-// Endpoint untuk musdesus monitoring upload page
-Route::get('/musdesus/kecamatan-desa', [MusdesusMonitoringController::class, 'getKecamatanDesa']);
-Route::post('/musdesus/petugas-by-desa', [MusdesusMonitoringController::class, 'getPetugasByDesa']);
 
 // Secure admin-only delete musdesus endpoint for public stats page
 Route::delete('/public/musdesus/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'secureDestroy']);
