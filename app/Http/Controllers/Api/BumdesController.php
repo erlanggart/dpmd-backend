@@ -14,6 +14,45 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 class BumdesController extends Controller
 {
     /**
+     * Helper function to generate proper storage URL based on environment
+     *
+     * @param string $filePath
+     * @return string
+     */
+    private function getStorageUrl(string $filePath): string
+    {
+        // Determine folder based on file path
+        $folder = 'bumdes'; // default folder
+        
+        if (strpos($filePath, 'laporan_keuangan/') === 0) {
+            $folder = 'laporan_keuangan';
+            $filename = basename($filePath);
+        } elseif (strpos($filePath, 'dokumen_badanhukum/') === 0) {
+            $folder = 'dokumen_badanhukum';
+            $filename = basename($filePath);
+        } else {
+            // For files without folder prefix, assume they're in appropriate folders
+            $filename = basename($filePath);
+            // Determine folder based on context or default to bumdes
+            if (strpos($filename, 'laporan') !== false || strpos($filename, 'keuangan') !== false) {
+                $folder = 'laporan_keuangan';
+            } elseif (strpos($filename, 'perdes') !== false || strpos($filename, 'profil') !== false || 
+                      strpos($filename, 'berita') !== false || strpos($filename, 'anggaran') !== false || 
+                      strpos($filename, 'sk') !== false || strpos($filename, 'program') !== false) {
+                $folder = 'dokumen_badanhukum';
+            }
+        }
+        
+        if (config('app.env') === 'production') {
+            // Production: Use new API uploads route
+            return 'https://dpmdbogorkab.id/api/uploads/' . $folder . '/' . $filename;
+        } else {
+            // Development: Use new API uploads route
+            return config('app.url') . '/api/uploads/' . $folder . '/' . $filename;
+        }
+    }
+
+    /**
      * Helper function untuk mengunggah berkas dan menghapus berkas lama.
      *
      * @param Request $request
@@ -28,8 +67,33 @@ class BumdesController extends Controller
             if ($currentFilePath && Storage::disk('public')->exists($currentFilePath)) {
                 Storage::disk('public')->delete($currentFilePath);
             }
-            // Simpan berkas baru di folder 'bumdes_files'
-            return $request->file($fileKey)->store('bumdes_files', 'public');
+            
+            // Determine folder based on file type
+            $folder = 'bumdes'; // default
+            $laporanKeuanganFields = ['LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024'];
+            $dokumenBadanHukumFields = ['Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 'AnggaranRumahTangga', 'ProgramKerja', 'SK_BUM_Desa'];
+            
+            if (in_array($fileKey, $laporanKeuanganFields)) {
+                $folder = 'laporan_keuangan';
+            } elseif (in_array($fileKey, $dokumenBadanHukumFields)) {
+                $folder = 'dokumen_badanhukum';
+            }
+            
+            // Save to public/uploads/{folder} instead of storage/app/public
+            $file = $request->file($fileKey);
+            $filename = time() . '_' . $file->getClientOriginalName();
+            
+            // Create directory if it doesn't exist
+            $uploadPath = public_path('uploads/' . $folder);
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0755, true);
+            }
+            
+            // Move file to public/uploads/{folder}
+            $file->move($uploadPath, $filename);
+            
+            // Return just the filename (not the full path)
+            return $filename;
         }
         return $currentFilePath;
     }
@@ -537,15 +601,16 @@ class BumdesController extends Controller
                         $filePath = $bumdes->$column;
                         $filename = basename($filePath);
                         
-                        // Check if file exists in storage
-                        $fileExists = Storage::disk('public')->exists($filePath);
+                        // Check if file exists in public/uploads/dokumen_badanhukum
+                        $publicPath = public_path('uploads/dokumen_badanhukum/' . $filename);
+                        $fileExists = file_exists($publicPath);
                         $fileSize = 0;
                         $lastModified = time();
                         
                         if ($fileExists) {
                             try {
-                                $fileSize = Storage::disk('public')->size($filePath);
-                                $lastModified = Storage::disk('public')->lastModified($filePath);
+                                $fileSize = filesize($publicPath);
+                                $lastModified = filemtime($publicPath);
                             } catch (\Exception $e) {
                                 // File exists but may have permission issues
                                 $fileExists = false;
@@ -561,8 +626,8 @@ class BumdesController extends Controller
                             'file_size_formatted' => $this->formatBytes($fileSize),
                             'extension' => pathinfo($filename, PATHINFO_EXTENSION),
                             'last_modified' => date('Y-m-d H:i:s', $lastModified),
-                            'url' => '/storage/' . $filePath,
-                            'download_url' => $fileExists ? url('storage/' . $filePath) : null,
+                            'url' => '/api/uploads/dokumen_badanhukum/' . $filename,
+                            'download_url' => $fileExists ? $this->getStorageUrl('dokumen_badanhukum/' . $filename) : null,
                             'file_exists' => $fileExists,
                             'status' => $fileExists ? 'available' : 'missing',
                             'bumdes_info' => [
@@ -587,15 +652,16 @@ class BumdesController extends Controller
             }
             
             // Also scan dokumen_badanhukum folder for additional backup files
-            $documentsPath = 'dokumen_badanhukum';
-            if (Storage::disk('public')->exists($documentsPath)) {
-                $files = Storage::disk('public')->files($documentsPath);
+            $documentsPath = public_path('uploads/dokumen_badanhukum');
+            
+            if (is_dir($documentsPath)) {
+                $files = array_diff(scandir($documentsPath), array('.', '..'));
                 
-                foreach ($files as $file) {
-                    $fileName = basename($file);
+                foreach ($files as $fileName) {
+                    $filePath = $documentsPath . '/' . $fileName;
                     
-                    // Skip .gitignore and other system files
-                    if (in_array($fileName, ['.gitignore', '.DS_Store', 'Thumbs.db'])) {
+                    // Skip directories and system files
+                    if (is_dir($filePath) || in_array($fileName, ['.gitignore', '.DS_Store', 'Thumbs.db'])) {
                         continue;
                     }
                     
@@ -610,17 +676,21 @@ class BumdesController extends Controller
                     
                     if (!$alreadyInDb) {
                         $matchedBumdes = $this->findMatchingBumdes($fileName);
+                        
+                        // Generate correct URL for public/uploads files
+                        $downloadUrl = $this->getStorageUrl('dokumen_badanhukum/' . $fileName);
+                        
                         $fileInfo = [
                             'filename' => $fileName,
-                            'original_path' => $file,
+                            'original_path' => 'uploads/dokumen_badanhukum/' . $fileName,
                             'document_type' => 'unlinked',
                             'document_label' => 'Tidak Terhubung',
-                            'size' => Storage::disk('public')->size($file),
-                            'file_size_formatted' => $this->formatBytes(Storage::disk('public')->size($file)),
+                            'size' => filesize($filePath),
+                            'file_size_formatted' => $this->formatBytes(filesize($filePath)),
                             'extension' => pathinfo($fileName, PATHINFO_EXTENSION),
-                            'last_modified' => date('Y-m-d H:i:s', Storage::disk('public')->lastModified($file)),
-                            'url' => '/storage/' . $file,
-                            'download_url' => url('storage/' . $file),
+                            'last_modified' => date('Y-m-d H:i:s', filemtime($filePath)),
+                            'url' => '/api/uploads/dokumen_badanhukum/' . $fileName,
+                            'download_url' => $downloadUrl,
                             'file_exists' => true,
                             'status' => 'unlinked',
                             'bumdes_name' => $matchedBumdes && count($matchedBumdes) > 0 ? $matchedBumdes[0]['namabumdesa'] : 'File Tidak Terhubung',
@@ -765,17 +835,17 @@ class BumdesController extends Controller
                 foreach ($laporanColumns as $column => $columnLabel) {
                     if (!empty($bumdes->$column)) {
                         $filename = $bumdes->$column; // Langsung nama file tanpa path
-                        $filePath = 'laporan_keuangan/' . $filename; // Tambahkan path untuk cek file
                         
-                        // Check if file exists in storage
-                        $fileExists = Storage::disk('public')->exists($filePath);
+                        // Check if file exists in public/uploads/laporan_keuangan
+                        $publicPath = public_path('uploads/laporan_keuangan/' . $filename);
+                        $fileExists = file_exists($publicPath);
                         $fileSize = 0;
                         $lastModified = time();
                         
                         if ($fileExists) {
                             try {
-                                $fileSize = Storage::disk('public')->size($filePath);
-                                $lastModified = Storage::disk('public')->lastModified($filePath);
+                                $fileSize = filesize($publicPath);
+                                $lastModified = filemtime($publicPath);
                             } catch (\Exception $e) {
                                 // If there's an error getting file info, continue with defaults
                             }
@@ -795,37 +865,41 @@ class BumdesController extends Controller
                             'document_type' => $column,
                             'document_label' => $columnLabel,
                             'filename' => $filename,
-                            'file_path' => $filePath,
+                            'file_path' => 'uploads/laporan_keuangan/' . $filename,
                             'file_exists' => $fileExists,
                             'file_size' => $fileSize,
                             'file_size_formatted' => $this->formatBytes($fileSize),
                             'last_modified' => date('Y-m-d H:i:s', $lastModified),
-                            'download_url' => $fileExists ? url('storage/' . $filePath) : null
+                            'download_url' => $fileExists ? $this->getStorageUrl('laporan_keuangan/' . $filename) : null
                         ];
                     }
                 }
             }
             
             // Also scan laporan_keuangan folder for additional backup files
-            $laporanPath = 'laporan_keuangan';
-            if (Storage::disk('public')->exists($laporanPath)) {
-                $files = Storage::disk('public')->files($laporanPath);
+            $laporanPath = public_path('uploads/laporan_keuangan');
+            
+            if (is_dir($laporanPath)) {
+                $files = array_diff(scandir($laporanPath), array('.', '..'));
                 
-                foreach ($files as $file) {
-                    $filename = basename($file);
-                    $fileSize = Storage::disk('public')->size($file);
-                    $lastModified = Storage::disk('public')->lastModified($file);
+                foreach ($files as $fileName) {
+                    $filePath = $laporanPath . '/' . $fileName;
+                    
+                    // Skip directories and system files
+                    if (is_dir($filePath) || in_array($fileName, ['.gitignore', '.DS_Store', 'Thumbs.db'])) {
+                        continue;
+                    }
                     
                     // Check if this file is already linked to a BUMDes
-                    $linkedBumdes = Bumdes::where('LaporanKeuangan2021', $filename)
-                                         ->orWhere('LaporanKeuangan2022', $filename)
-                                         ->orWhere('LaporanKeuangan2023', $filename)
-                                         ->orWhere('LaporanKeuangan2024', $filename)
+                    $linkedBumdes = Bumdes::where('LaporanKeuangan2021', $fileName)
+                                         ->orWhere('LaporanKeuangan2022', $fileName)
+                                         ->orWhere('LaporanKeuangan2023', $fileName)
+                                         ->orWhere('LaporanKeuangan2024', $fileName)
                                          ->first();
                     
                     if (!$linkedBumdes) {
                         // Try to find matching BUMDes for unlinked files
-                        $matchedBumdes = $this->findMatchingBumdes($filename);
+                        $matchedBumdes = $this->findMatchingBumdes($fileName);
                         
                         // If we found a match, create bumdes_info structure
                         $bumdesInfo = null;
@@ -839,6 +913,9 @@ class BumdesController extends Controller
                             ];
                         }
                         
+                        // Generate correct URL for public/uploads files
+                        $downloadUrl = $this->getStorageUrl('laporan_keuangan/' . $fileName);
+                        
                         $documents[] = [
                             'id' => null,
                             'bumdes_name' => $matchedBumdes && count($matchedBumdes) > 0 ? $matchedBumdes[0]['namabumdesa'] : 'File Tidak Terhubung',
@@ -847,13 +924,13 @@ class BumdesController extends Controller
                             'bumdes_info' => $bumdesInfo, // Add bumdes_info for matched files
                             'document_type' => $bumdesInfo ? 'matched' : 'unlinked', // Change type if matched
                             'document_label' => 'File Laporan Keuangan',
-                            'filename' => $filename,
-                            'file_path' => $file,
+                            'filename' => $fileName,
+                            'file_path' => 'uploads/laporan_keuangan/' . $fileName,
                             'file_exists' => true,
-                            'file_size' => $fileSize,
-                            'file_size_formatted' => $this->formatBytes($fileSize),
-                            'last_modified' => date('Y-m-d H:i:s', $lastModified),
-                            'download_url' => url('storage/' . $file),
+                            'file_size' => filesize($filePath),
+                            'file_size_formatted' => $this->formatBytes(filesize($filePath)),
+                            'last_modified' => date('Y-m-d H:i:s', filemtime($filePath)),
+                            'download_url' => $downloadUrl,
                             'matched_bumdes' => $matchedBumdes
                         ];
                     }
@@ -906,12 +983,14 @@ class BumdesController extends Controller
             $filename = $request->filename;
             $documentType = $request->document_type;
 
-            // Check if file exists in storage
-            $filePath = $documentType . '/' . $filename;
-            if (!Storage::disk('public')->exists($filePath)) {
+            // Check if file exists in public/uploads
+            $publicPath = public_path('uploads/' . $documentType . '/' . $filename);
+            $fileExists = file_exists($publicPath);
+            
+            if (!$fileExists) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'File tidak ditemukan di storage'
+                    'message' => 'File tidak ditemukan di public/uploads/' . $documentType
                 ], 404);
             }
 
