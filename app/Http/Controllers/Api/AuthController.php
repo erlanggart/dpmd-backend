@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 
 class AuthController extends Controller
@@ -16,12 +17,18 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
+        file_put_contents('debug_login.log', 'Login attempt started - ' . date('Y-m-d H:i:s') . PHP_EOL, FILE_APPEND);
+        Log::info('Login attempt started', ['request_data' => $request->all()]);
+        
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
         ]);
 
+        Log::info('Credentials validated', ['credentials' => $credentials]);
+
         if (Auth::attempt($credentials)) {
+            Log::info('Auth::attempt successful');
             /** @var \App\Models\User $user */
             $user = Auth::user();
             

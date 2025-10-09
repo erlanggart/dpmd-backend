@@ -13,8 +13,6 @@ use App\Models\KarangTaruna;
 use App\Models\Lpm;
 use App\Models\Satlinmas;
 use App\Models\Pkk;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class KelembagaanController extends Controller
 {

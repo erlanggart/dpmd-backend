@@ -43,12 +43,15 @@ class BumdesController extends Controller
             }
         }
         
+        // Just encode spaces and special characters that might break URLs
+        $encodedFilename = str_replace(' ', '%20', $filename);
+        
         if (config('app.env') === 'production') {
-            // Production: Use new API uploads route
-            return 'https://dpmdbogorkab.id/api/uploads/' . $folder . '/' . $filename;
+            // Production: Use new API file route
+            return 'https://dpmdbogorkab.id/api/bumdes/file/' . $folder . '/' . $encodedFilename;
         } else {
-            // Development: Use new API uploads route
-            return config('app.url') . '/api/uploads/' . $folder . '/' . $filename;
+            // Development: Use new API file route
+            return config('app.url') . '/api/bumdes/file/' . $folder . '/' . $encodedFilename;
         }
     }
 
@@ -601,16 +604,16 @@ class BumdesController extends Controller
                         $filePath = $bumdes->$column;
                         $filename = basename($filePath);
                         
-                        // Check if file exists in public/uploads/dokumen_badanhukum
-                        $publicPath = public_path('uploads/dokumen_badanhukum/' . $filename);
-                        $fileExists = file_exists($publicPath);
+                        // Check if file exists in storage/app/uploads/dokumen_badanhukum
+                        $storagePath = storage_path('app/uploads/dokumen_badanhukum/' . $filename);
+                        $fileExists = file_exists($storagePath);
                         $fileSize = 0;
                         $lastModified = time();
                         
                         if ($fileExists) {
                             try {
-                                $fileSize = filesize($publicPath);
-                                $lastModified = filemtime($publicPath);
+                                $fileSize = filesize($storagePath);
+                                $lastModified = filemtime($storagePath);
                             } catch (\Exception $e) {
                                 // File exists but may have permission issues
                                 $fileExists = false;
@@ -652,7 +655,7 @@ class BumdesController extends Controller
             }
             
             // Also scan dokumen_badanhukum folder for additional backup files
-            $documentsPath = public_path('uploads/dokumen_badanhukum');
+            $documentsPath = storage_path('app/uploads/dokumen_badanhukum');
             
             if (is_dir($documentsPath)) {
                 $files = array_diff(scandir($documentsPath), array('.', '..'));
@@ -836,16 +839,16 @@ class BumdesController extends Controller
                     if (!empty($bumdes->$column)) {
                         $filename = $bumdes->$column; // Langsung nama file tanpa path
                         
-                        // Check if file exists in public/uploads/laporan_keuangan
-                        $publicPath = public_path('uploads/laporan_keuangan/' . $filename);
-                        $fileExists = file_exists($publicPath);
+                        // Check if file exists in storage/app/uploads/laporan_keuangan
+                        $storagePath = storage_path('app/uploads/laporan_keuangan/' . $filename);
+                        $fileExists = file_exists($storagePath);
                         $fileSize = 0;
                         $lastModified = time();
                         
                         if ($fileExists) {
                             try {
-                                $fileSize = filesize($publicPath);
-                                $lastModified = filemtime($publicPath);
+                                $fileSize = filesize($storagePath);
+                                $lastModified = filemtime($storagePath);
                             } catch (\Exception $e) {
                                 // If there's an error getting file info, continue with defaults
                             }
@@ -877,7 +880,7 @@ class BumdesController extends Controller
             }
             
             // Also scan laporan_keuangan folder for additional backup files
-            $laporanPath = public_path('uploads/laporan_keuangan');
+            $laporanPath = storage_path('app/uploads/laporan_keuangan');
             
             if (is_dir($laporanPath)) {
                 $files = array_diff(scandir($laporanPath), array('.', '..'));
@@ -1080,5 +1083,89 @@ class BumdesController extends Controller
         
         // Default to current year or 2024
         return '2024';
+    }
+
+    /**
+     * Delete a specific file and unlink it from database
+     */
+    public function deleteFile(Request $request)
+    {
+        try {
+            $request->validate([
+                'filename' => 'required|string',
+                'folder' => 'required|in:dokumen_badanhukum,laporan_keuangan',
+                'bumdes_id' => 'nullable|integer'
+            ]);
+
+            $filename = $request->filename;
+            $folder = $request->folder;
+            $bumdesId = $request->bumdes_id;
+
+            // Check if file exists in storage
+            $filePath = storage_path("app/uploads/{$folder}/{$filename}");
+            
+            if (!file_exists($filePath)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File tidak ditemukan'
+                ], 404);
+            }
+
+            // Find BUMDes that references this file
+            $affectedBumdes = [];
+            
+            if ($folder === 'dokumen_badanhukum') {
+                $documentFields = ['Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 'AnggaranRumahTangga', 'ProgramKerja', 'SK_BUM_Desa'];
+                
+                foreach ($documentFields as $field) {
+                    $bumdesList = Bumdes::where($field, $filename)->get();
+                    foreach ($bumdesList as $bumdes) {
+                        $affectedBumdes[] = $bumdes;
+                        // Clear the field in database
+                        $bumdes->update([$field => null]);
+                    }
+                }
+            } else { // laporan_keuangan
+                $laporanFields = ['LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024'];
+                
+                foreach ($laporanFields as $field) {
+                    $bumdesList = Bumdes::where($field, $filename)->get();
+                    foreach ($bumdesList as $bumdes) {
+                        $affectedBumdes[] = $bumdes;
+                        // Clear the field in database
+                        $bumdes->update([$field => null]);
+                    }
+                }
+            }
+
+            // Delete the physical file
+            if (unlink($filePath)) {
+                $message = "File {$filename} berhasil dihapus";
+                if (count($affectedBumdes) > 0) {
+                    $bumdesNames = array_map(function($bumdes) {
+                        return $bumdes->namabumdesa;
+                    }, $affectedBumdes);
+                    $message .= " dan unlink dari BUMDes: " . implode(', ', $bumdesNames);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'affected_bumdes' => count($affectedBumdes)
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal menghapus file'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error deleting file: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus file: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

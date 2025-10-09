@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\Desa\PkkController;
 use App\Http\Controllers\Api\Desa\KelembagaanController;
 use App\Http\Controllers\Api\MusdesusMonitoringController;
 use App\Http\Controllers\Api\KelembagaanController as GlobalKelembagaanController;
+use App\Http\Controllers\DesaController;
 
 use App\Http\Controllers\Api\BumdesController;
 use App\Http\Controllers\Api\Perjadin\KegiatanController as PerjadinKegiatanController;
@@ -102,6 +103,13 @@ Route::middleware(['auth:sanctum', 'role:desa|superadmin|sekretariat|sarana_pras
 Route::get('/produk-hukum/{produkHukum}', [ProdukHukumController::class, 'show']);
 
 Route::get('/products', [ProductController::class, 'index']);
+
+// Test endpoint
+Route::post('/test-endpoint', function(Request $request) {
+    file_put_contents('test_endpoint.log', 'Test endpoint called - ' . date('Y-m-d H:i:s') . ' - ' . json_encode($request->all()) . PHP_EOL, FILE_APPEND);
+    return response()->json(['status' => 'success', 'data' => $request->all()]);
+});
+
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/login/bidang', [AuthController::class, 'loginBidang']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
@@ -246,8 +254,30 @@ Route::middleware(['auth:sanctum'])->get('/me', function (Request $request) {
 });
 
 // Routes untuk Bumdes (tanpa autentikasi untuk testing)
-Route::apiResource('/bumdes', BumdesController::class);
+// Specific routes harus didefinisikan sebelum resource routes
 Route::get('/bumdes/search', [BumdesController::class, 'search']);
+Route::get('/bumdes/statistics', [BumdesController::class, 'statistics']);
+Route::get('/bumdes/dokumen-badan-hukum', [BumdesController::class, 'getDokumenBadanHukum']);
+Route::get('/bumdes/laporan-keuangan', [BumdesController::class, 'getLaporanKeuangan']);
+Route::delete('/bumdes/delete-file', [BumdesController::class, 'deleteFile']);
+
+// Route untuk serve file dari storage
+Route::get('/bumdes/file/{folder}/{filename}', function($folder, $filename) {
+    $allowedFolders = ['dokumen_badanhukum', 'laporan_keuangan'];
+    
+    if (!in_array($folder, $allowedFolders)) {
+        abort(404);
+    }
+    
+    $filePath = storage_path("app/uploads/{$folder}/{$filename}");
+    
+    if (!file_exists($filePath)) {
+        abort(404);
+    }
+    
+    return response()->file($filePath);
+})->where('filename', '.*');
+Route::apiResource('/bumdes', BumdesController::class);
 Route::post('/login/desa', [BumdesController::class, 'loginByDesa']);
 Route::get('/identitas-bumdes', [BumdesController::class, 'index']); // Untuk mendapatkan data identitas
 
@@ -315,9 +345,6 @@ Route::get('/test-storage', function () {
 Route::middleware(['auth:sanctum', 'role:desa|superadmin'])->prefix('desa')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::apiResource('/profil-desa', ProfilDesaController::class)->only(['index', 'store']);
-    Route::apiResource('/produk-hukum', ProdukHukumController::class);
-    Route::post('/produk-hukum/{id}', [ProdukHukumController::class, 'update']);
-    Route::put('/produk-hukum/status/{id}', [ProdukHukumController::class, 'updateStatus']);
     Route::apiResource('/aparatur-desa', AparaturDesaController::class);
     Route::post('/aparatur-desa/{id}', [AparaturDesaController::class, 'update']);
 
