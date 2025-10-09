@@ -162,4 +162,271 @@ class KelembagaanController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get RW list for logged-in desa
+     */
+    public function getRW()
+    {
+        try {
+            $user = Auth::user();
+            if (!$user || !$user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User tidak memiliki akses desa'
+                ], 403);
+            }
+
+            $rwList = Rw::where('desa_id', $user->desa_id)
+                ->with(['pengurus', 'rts' => function ($query) {
+                    $query->with('pengurus');
+                }])
+                ->get()
+                ->map(function ($rw) {
+                    $ketua = $rw->pengurus()->where('jabatan', 'Ketua')->first();
+                    return [
+                        'id' => $rw->id,
+                        'nama' => 'RW ' . $rw->nomor,
+                        'nomor' => $rw->nomor,
+                        'alamat' => $rw->alamat,
+                        'ketua' => $ketua ? $ketua->nama : '-',
+                        'pengurus_count' => $rw->pengurus->count(),
+                        'rt_count' => $rw->rts->count(),
+                        'total_pengurus_rt' => $rw->rts->sum(function ($rt) {
+                            return $rt->pengurus->count();
+                        })
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data RW berhasil diambil',
+                'data' => $rwList
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data RW',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get Posyandu list for logged-in desa
+     */
+    public function getPosyandu()
+    {
+        try {
+            $user = Auth::user();
+            if (!$user || !$user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User tidak memiliki akses desa'
+                ], 403);
+            }
+
+            $posyanduList = Posyandu::where('desa_id', $user->desa_id)
+                ->with('pengurus')
+                ->get()
+                ->map(function ($posyandu) {
+                    $ketua = $posyandu->pengurus()->where('jabatan', 'Ketua')->first();
+                    return [
+                        'id' => $posyandu->id,
+                        'nama' => $posyandu->nama,
+                        'alamat' => $posyandu->alamat,
+                        'ketua' => $ketua ? $ketua->nama : '-',
+                        'pengurus_count' => $posyandu->pengurus->count(),
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data Posyandu berhasil diambil',
+                'data' => $posyanduList
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data Posyandu',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get Karang Taruna for logged-in desa
+     */
+    public function getKarangTaruna()
+    {
+        try {
+            $user = Auth::user();
+            if (!$user || !$user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User tidak memiliki akses desa'
+                ], 403);
+            }
+
+            $karangTaruna = KarangTaruna::where('desa_id', $user->desa_id)
+                ->with('pengurus')
+                ->first();
+
+            $data = null;
+            if ($karangTaruna) {
+                $ketua = $karangTaruna->pengurus()->where('jabatan', 'Ketua')->first();
+                $data = [
+                    'id' => $karangTaruna->id,
+                    'nama' => $karangTaruna->nama,
+                    'alamat' => $karangTaruna->alamat,
+                    'ketua' => $ketua ? $ketua->nama : '-',
+                    'pengurus_count' => $karangTaruna->pengurus->count(),
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data Karang Taruna berhasil diambil',
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data Karang Taruna',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get LPM for logged-in desa
+     */
+    public function getLPM()
+    {
+        try {
+            $user = Auth::user();
+            if (!$user || !$user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User tidak memiliki akses desa'
+                ], 403);
+            }
+
+            $lpm = Lpm::where('desa_id', $user->desa_id)
+                ->with('pengurus')
+                ->first();
+
+            $data = null;
+            if ($lpm) {
+                $ketua = $lpm->pengurus()->where('jabatan', 'Ketua')->first();
+                $data = [
+                    'id' => $lpm->id,
+                    'nama' => $lpm->nama,
+                    'alamat' => $lpm->alamat,
+                    'ketua' => $ketua ? $ketua->nama : '-',
+                    'pengurus_count' => $lpm->pengurus->count(),
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data LPM berhasil diambil',
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data LPM',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get Satlinmas for logged-in desa
+     */
+    public function getSatlinmas()
+    {
+        try {
+            $user = Auth::user();
+            if (!$user || !$user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User tidak memiliki akses desa'
+                ], 403);
+            }
+
+            $satlinmas = Satlinmas::where('desa_id', $user->desa_id)
+                ->with('pengurus')
+                ->first();
+
+            $data = null;
+            if ($satlinmas) {
+                $ketua = $satlinmas->pengurus()->where('jabatan', 'Ketua')->first();
+                $data = [
+                    'id' => $satlinmas->id,
+                    'nama' => $satlinmas->nama,
+                    'alamat' => $satlinmas->alamat,
+                    'ketua' => $ketua ? $ketua->nama : '-',
+                    'pengurus_count' => $satlinmas->pengurus->count(),
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data Satlinmas berhasil diambil',
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data Satlinmas',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get PKK for logged-in desa
+     */
+    public function getPKK()
+    {
+        try {
+            $user = Auth::user();
+            if (!$user || !$user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User tidak memiliki akses desa'
+                ], 403);
+            }
+
+            $pkk = Pkk::where('desa_id', $user->desa_id)
+                ->with('pengurus')
+                ->first();
+
+            $data = null;
+            if ($pkk) {
+                $ketua = $pkk->pengurus()->where('jabatan', 'Ketua')->first();
+                $data = [
+                    'id' => $pkk->id,
+                    'nama' => $pkk->nama,
+                    'alamat' => $pkk->alamat,
+                    'ketua' => $ketua ? $ketua->nama : '-',
+                    'pengurus_count' => $pkk->pengurus->count(),
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data PKK berhasil diambil',
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data PKK',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

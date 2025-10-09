@@ -13,7 +13,17 @@ class PengurusController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $items = Pengurus::where('desa_id', $user->desa_id)->latest()->get();
+
+        // Handle superadmin access - can specify desa_id in query parameter
+        $desaId = $user->role === 'superadmin' && $request->has('desa_id')
+            ? $request->get('desa_id')
+            : $user->desa_id;
+
+        if (!$desaId) {
+            return response()->json(['success' => false, 'message' => 'Desa ID required'], 400);
+        }
+
+        $items = Pengurus::where('desa_id', $desaId)->latest()->get();
         return response()->json(['success' => true, 'data' => $items]);
     }
 
@@ -34,8 +44,17 @@ class PengurusController extends Controller
             ], 400);
         }
 
+        // Handle superadmin access - can specify desa_id in query parameter
+        $desaId = $user->role === 'superadmin' && $request->has('desa_id')
+            ? $request->get('desa_id')
+            : $user->desa_id;
+
+        if (!$desaId) {
+            return response()->json(['success' => false, 'message' => 'Desa ID required'], 400);
+        }
+
         // Get only essential pengurus data for list view
-        $pengurus = Pengurus::where('desa_id', $user->desa_id)
+        $pengurus = Pengurus::where('desa_id', $desaId)
             ->where('pengurusable_type', $kelembagaanType)
             ->where('pengurusable_id', $kelembagaanId)
             ->where('status_jabatan', 'aktif')
@@ -62,8 +81,17 @@ class PengurusController extends Controller
             ], 400);
         }
 
+        // Handle superadmin access - can specify desa_id in query parameter
+        $desaId = $user->role === 'superadmin' && $request->has('desa_id')
+            ? $request->get('desa_id')
+            : $user->desa_id;
+
+        if (!$desaId) {
+            return response()->json(['success' => false, 'message' => 'Desa ID required'], 400);
+        }
+
         // Get inactive pengurus for history
-        $pengurus = Pengurus::where('desa_id', $user->desa_id)
+        $pengurus = Pengurus::where('desa_id', $desaId)
             ->where('pengurusable_type', $kelembagaanType)
             ->where('pengurusable_id', $kelembagaanId)
             ->where('status_jabatan', 'selesai')
@@ -80,9 +108,31 @@ class PengurusController extends Controller
     public function show(Request $request, $id)
     {
         $user = $request->user();
-        $pengurus = Pengurus::where('desa_id', $user->desa_id)
-            ->where('id', $id)
-            ->first();
+
+        if ($user->role === 'superadmin') {
+            // For superadmin, find pengurus by ID without desa_id restriction
+            $pengurus = Pengurus::where('id', $id)->first();
+
+            // If desa_id is specified in query, verify it matches
+            if ($request->has('desa_id') && $pengurus) {
+                $requestedDesaId = $request->get('desa_id');
+                if ($pengurus->desa_id !== $requestedDesaId) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Pengurus tidak ditemukan di desa yang diminta'
+                    ], 404);
+                }
+            }
+        } else {
+            // For regular users, use their desa_id
+            if (!$user->desa_id) {
+                return response()->json(['success' => false, 'message' => 'Desa ID required'], 400);
+            }
+
+            $pengurus = Pengurus::where('desa_id', $user->desa_id)
+                ->where('id', $id)
+                ->first();
+        }
 
         if (!$pengurus) {
             return response()->json([
@@ -93,16 +143,37 @@ class PengurusController extends Controller
 
         return response()->json(['success' => true, 'data' => $pengurus]);
     }
-
     /**
      * Update pengurus status (aktif/selesai)
      */
     public function updateStatus(Request $request, $id)
     {
         $user = $request->user();
-        $pengurus = Pengurus::where('desa_id', $user->desa_id)
-            ->where('id', $id)
-            ->first();
+
+        if ($user->role === 'superadmin') {
+            // For superadmin, find pengurus by ID without desa_id restriction
+            $pengurus = Pengurus::where('id', $id)->first();
+
+            // If desa_id is specified in query, verify it matches
+            if ($request->has('desa_id') && $pengurus) {
+                $requestedDesaId = $request->get('desa_id');
+                if ($pengurus->desa_id !== $requestedDesaId) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Pengurus tidak ditemukan di desa yang diminta'
+                    ], 404);
+                }
+            }
+        } else {
+            // For regular users, use their desa_id
+            if (!$user->desa_id) {
+                return response()->json(['success' => false, 'message' => 'Desa ID required'], 400);
+            }
+
+            $pengurus = Pengurus::where('desa_id', $user->desa_id)
+                ->where('id', $id)
+                ->first();
+        }
 
         if (!$pengurus) {
             return response()->json([
@@ -136,6 +207,16 @@ class PengurusController extends Controller
     public function store(Request $request)
     {
         $user = $request->user();
+
+        // Handle superadmin access - can specify desa_id in query parameter
+        $desaId = $user->role === 'superadmin' && $request->has('desa_id')
+            ? $request->get('desa_id')
+            : $user->desa_id;
+
+        if (!$desaId) {
+            return response()->json(['success' => false, 'message' => 'Desa ID required'], 400);
+        }
+
         $v = Validator::make($request->all(), [
             'pengurusable_type' => 'required|string',
             'pengurusable_id' => 'required|uuid',
@@ -162,7 +243,7 @@ class PengurusController extends Controller
         $class = $request->pengurusable_type;
         if (!class_exists($class)) return response()->json(['message' => 'Tipe pengurus tidak valid'], 422);
         $target = $class::where('id', $request->pengurusable_id)->first();
-        if (!$target || (isset($target->desa_id) && $target->desa_id != $user->desa_id)) {
+        if (!$target || (isset($target->desa_id) && $target->desa_id != $desaId)) {
             return response()->json(['message' => 'Target pengurus tidak ditemukan di desa ini'], 404);
         }
 
@@ -173,7 +254,7 @@ class PengurusController extends Controller
         }
 
         $item = Pengurus::create([
-            'desa_id' => $user->desa_id,
+            'desa_id' => $desaId,
             'pengurusable_type' => $class,
             'pengurusable_id' => $request->pengurusable_id,
             'nama_lengkap' => $request->nama_lengkap,
@@ -199,7 +280,36 @@ class PengurusController extends Controller
     public function update(Request $request, $id)
     {
         $user = $request->user();
-        $item = Pengurus::where('desa_id', $user->desa_id)->where('id', $id)->firstOrFail();
+
+        if ($user->role === 'superadmin') {
+            // For superadmin, find pengurus by ID without desa_id restriction
+            $item = Pengurus::where('id', $id)->first();
+
+            if (!$item) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pengurus tidak ditemukan'
+                ], 404);
+            }
+
+            // If desa_id is specified in query, verify it matches
+            if ($request->has('desa_id')) {
+                $requestedDesaId = $request->get('desa_id');
+                if ($item->desa_id !== $requestedDesaId) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Pengurus tidak ditemukan di desa yang diminta'
+                    ], 404);
+                }
+            }
+        } else {
+            // For regular users, use their desa_id
+            if (!$user->desa_id) {
+                return response()->json(['success' => false, 'message' => 'Desa ID required'], 400);
+            }
+
+            $item = Pengurus::where('desa_id', $user->desa_id)->where('id', $id)->firstOrFail();
+        }
         $v = Validator::make($request->all(), [
             'nama_lengkap' => 'required|string|max:255',
             'jabatan' => 'required|string|max:100',

@@ -16,9 +16,12 @@ class UserController extends Controller
      */
     public function index()
     {
-        // Mengambil semua user, diurutkan dari yang terbaru
-        // with('roles') adalah optimasi untuk menghindari N+1 problem
-        $users = User::with('roles')->latest()->get();
+        // Mengambil semua user dengan relasi yang dibutuhkan
+        $users = User::with([
+            'roles',
+            'desa.kecamatan',
+            'kecamatan'
+        ])->latest()->get();
 
         // Mengembalikan data menggunakan UserResource
         return UserResource::collection($users);
@@ -26,33 +29,78 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        $allowedRoles = [
+            'superadmin',
+            'dinas',
+            'kepala_dinas',
+            'sekretaris_dinas',
+            // 4 Bidang
+            'sarana_prasarana',
+            'pemerintahan_desa',
+            'kekayaan_keuangan',
+            'pemberdayaan_masyarakat',
+            // 3 Departemen
+            'sekretariat',
+            'prolap',
+            'keuangan',
+            'kecamatan',
+            'desa'
+        ];
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => ['required', 'string', Rule::in(['admin bidang', 'admin dinas', 'admin kecamatan', 'admin desa'])],
-            'entity_id' => 'required|integer', // ID dari desa/kecamatan/bidang/dinas
+            'role' => ['required', 'string', Rule::in($allowedRoles)],
+            'entity_id' => 'nullable|integer', // Optional untuk roles yang membutuhkan
         ]);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'role' => $validated['role'], // Set role langsung di field database
         ]);
 
-        // Hubungkan user ke entitas berdasarkan peran
-        switch ($validated['role']) {
-            case 'admin bidang':
-                $user->update(['bidang_id' => $validated['entity_id']]);
-                break;
-            case 'admin dinas':
-                $user->update(['dinas_id' => $validated['entity_id']]);
-                break;
-                // ... (kasus untuk desa dan kecamatan bisa ditambahkan)
+        // Hubungkan user ke entitas berdasarkan peran (hanya untuk kecamatan/desa)
+        if (isset($validated['entity_id']) && $validated['entity_id']) {
+            switch ($validated['role']) {
+                case 'kecamatan':
+                    $user->update(['kecamatan_id' => $validated['entity_id']]);
+                    break;
+                case 'desa':
+                    $user->update(['desa_id' => $validated['entity_id']]);
+                    break;
+            }
         }
 
-        $user->assignRole($validated['role']);
+        // Optional: Assign Spatie role jika diperlukan
+        // $user->assignRole($validated['role']);
 
-        return response()->json(['message' => 'User berhasil dibuat.', 'user' => $user], 201);
+        return response()->json([
+            'message' => 'User berhasil dibuat.',
+            'data' => new UserResource($user)
+        ], 201);
+    }
+
+    /**
+     * Reset password user
+     */
+    public function resetPassword(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'password' => 'required|string|min:8',
+        ]);
+
+        $user = User::findOrFail($id);
+
+        $user->update([
+            'password' => Hash::make($validated['password'])
+        ]);
+
+        return response()->json([
+            'message' => 'Password berhasil direset.',
+            'data' => new UserResource($user)
+        ]);
     }
 }

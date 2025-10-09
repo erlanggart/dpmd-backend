@@ -10,6 +10,10 @@ class Desa extends Model
     use HasFactory;
     protected $guarded = [];
 
+    protected $casts = [
+        'status_pemerintahan' => 'string',
+    ];
+
     public function kecamatan()
     {
         return $this->belongsTo(Kecamatan::class);

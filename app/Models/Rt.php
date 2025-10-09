@@ -15,7 +15,8 @@ class Rt extends Model
         'nomor',
         'alamat',
         'status_kelembagaan',
-        'status_verifikasi'
+        'status_verifikasi',
+        'produk_hukum_id'
     ];
 
     public function desa()
@@ -31,5 +32,10 @@ class Rt extends Model
     public function pengurus()
     {
         return $this->morphMany(Pengurus::class, 'pengurusable');
+    }
+
+    public function produkHukum()
+    {
+        return $this->belongsTo(ProdukHukum::class, 'produk_hukum_id');
     }
 }

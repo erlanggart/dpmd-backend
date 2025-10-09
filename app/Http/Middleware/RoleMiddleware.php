@@ -22,7 +22,7 @@ class RoleMiddleware
         }
 
         $user = $request->user();
-        
+
         // Parsing roles - jika roles hanya satu string dengan separator |
         $allowedRoles = [];
         foreach ($roles as $role) {
@@ -32,7 +32,7 @@ class RoleMiddleware
                 $allowedRoles[] = $role;
             }
         }
-        
+
         // Cek apakah user memiliki salah satu role yang diizinkan
         if (in_array($user->role, $allowedRoles)) {
             return $next($request);

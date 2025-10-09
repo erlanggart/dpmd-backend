@@ -24,6 +24,7 @@ class LpmController extends Controller
             'alamat' => 'nullable|string|max:255',
             'status_kelembagaan' => 'nullable|in:aktif,nonaktif',
             'status_verifikasi' => 'nullable|in:verified,unverified',
+            'produk_hukum_id' => 'nullable|uuid|exists:produk_hukums,id',
         ]);
         if ($v->fails()) return response()->json($v->errors(), 422);
         $data = array_merge($v->validated(), ['desa_id' => $user->desa_id]);
@@ -41,9 +42,50 @@ class LpmController extends Controller
             'alamat' => 'nullable|string|max:255',
             'status_kelembagaan' => 'nullable|in:aktif,nonaktif',
             'status_verifikasi' => 'nullable|in:verified,unverified',
+            'produk_hukum_id' => 'nullable|uuid|exists:produk_hukums,id',
         ]);
         if ($v->fails()) return response()->json($v->errors(), 422);
         $item->update($v->validated());
+        return response()->json(['success' => true, 'data' => $item]);
+    }
+
+    public function toggleStatus(Request $request, $id)
+    {
+        $user = $request->user();
+
+        // Find LPM based on user role
+        if ($user->role === 'superadmin') {
+            $item = Lpm::findOrFail($id);
+        } else {
+            $item = Lpm::where('desa_id', $user->desa_id)->where('id', $id)->firstOrFail();
+        }
+
+        $v = Validator::make($request->all(), [
+            'status_kelembagaan' => 'required|in:aktif,nonaktif',
+        ]);
+        if ($v->fails()) return response()->json($v->errors(), 422);
+
+        $item->update(['status_kelembagaan' => $request->status_kelembagaan]);
+        return response()->json(['success' => true, 'data' => $item]);
+    }
+
+    public function toggleVerification(Request $request, $id)
+    {
+        $user = $request->user();
+
+        // Find LPM based on user role
+        if ($user->role === 'superadmin') {
+            $item = Lpm::findOrFail($id);
+        } else {
+            $item = Lpm::where('desa_id', $user->desa_id)->where('id', $id)->firstOrFail();
+        }
+
+        $v = Validator::make($request->all(), [
+            'status_verifikasi' => 'required|in:verified,unverified,pending',
+        ]);
+        if ($v->fails()) return response()->json($v->errors(), 422);
+
+        $item->update(['status_verifikasi' => $request->status_verifikasi]);
         return response()->json(['success' => true, 'data' => $item]);
     }
 
