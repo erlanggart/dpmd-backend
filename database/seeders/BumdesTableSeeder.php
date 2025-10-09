@@ -15,23 +15,29 @@ class BumdesTableSeeder extends Seeder
      */
     public function run()
     {
-        // Tentukan path ke file JSON dari root proyek
-        $jsonPath = base_path('desk_bumdes2025.json');
+        // Tentukan path file JSON
+        $jsonFilePath = base_path('desk_bumdes2025.json');
 
-        if (!File::exists($jsonPath)) {
-            $this->command->error("File desk_bumdes2025.json tidak ditemukan! Pastikan file ini berada di root proyek Anda.");
+        // Baca dan decode data JSON
+        if (!File::exists($jsonFilePath)) {
+            $this->command->error("File JSON tidak ditemukan: {$jsonFilePath}");
             return;
         }
 
-        $json = File::get($jsonPath);
-        $data = json_decode($json, true);
+        $jsonData = File::get($jsonFilePath);
+        $bumdesArray = json_decode($jsonData, true);
 
-        if (!is_array($data)) {
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->command->error("Error parsing JSON: " . json_last_error_msg());
+            return;
+        }
+
+        if (!is_array($bumdesArray)) {
             $this->command->error("Data JSON tidak valid atau kosong.");
             return;
         }
 
-        $totalData = count($data);
+        $totalData = count($bumdesArray);
         $this->command->info("Memproses {$totalData} data BUMDes dari file JSON...");
 
         // Tentukan kolom-kolom yang harus diubah menjadi integer
@@ -43,7 +49,7 @@ class BumdesTableSeeder extends Seeder
             'KontribusiTerhadapPADes2021', 'KontribusiTerhadapPADes2022', 'KontribusiTerhadapPADes2023', 'KontribusiTerhadapPADes2024',
         ];
 
-        foreach ($data as $index => $bumdesData) {
+        foreach ($bumdesArray as $index => $bumdesData) {
             // Generate kode_desa dari kombinasi kecamatan dan desa, atau gunakan index sebagai fallback
             $kode_desa = null;
             

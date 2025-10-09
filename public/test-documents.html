@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Dokumen BUMDes API</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .document { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 5px; }
+        .status { padding: 3px 8px; border-radius: 3px; color: white; font-size: 12px; }
+        .available { background: green; }
+        .missing { background: red; }
+        .backup { background: orange; }
+        .bumdes-name { font-weight: bold; color: #2563eb; }
+        .loading { color: #666; font-style: italic; }
+        .stats { background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>Test Dokumen BUMDes API</h1>
+    
+    <div class="stats" id="stats">
+        <div class="loading">Loading statistics...</div>
+    </div>
+    
+    <h2>Filter BUMDes</h2>
+    <select id="bumdesFilter" onchange="filterDocuments()">
+        <option value="">Semua BUMDes</option>
+    </select>
+    
+    <h2>Documents</h2>
+    <div id="documents">
+        <div class="loading">Loading documents...</div>
+    </div>
+
+    <script>
+        let allDocuments = [];
+        
+        async function loadDocuments() {
+            try {
+                const response = await fetch('http://localhost:8000/api/dokumen-badan-hukum');
+                const data = await response.json();
+                
+                allDocuments = data.documents || [];
+                
+                // Update stats
+                updateStats(data.summary || {});
+                
+                // Populate BUMDes filter
+                populateBumdesFilter();
+                
+                // Display documents
+                displayDocuments(allDocuments);
+                
+            } catch (error) {
+                document.getElementById('documents').innerHTML = `<div style="color: red;">Error loading documents: ${error.message}</div>`;
+            }
+        }
+        
+        function updateStats(summary) {
+            const statsDiv = document.getElementById('stats');
+            statsDiv.innerHTML = `
+                <h3>Statistics</h3>
+                <div>Total BUMDes: ${summary.total_bumdes || 0}</div>
+                <div>Total Documents: ${summary.total_documents || 0}</div>
+                <div>Available Files: ${summary.available_files || 0}</div>
+                <div>Missing Files: ${summary.missing_files || 0}</div>
+                <div>Document Types: ${summary.document_types || 0}</div>
+            `;
+        }
+        
+        function populateBumdesFilter() {
+            const filter = document.getElementById('bumdesFilter');
+            const uniqueBumdes = [...new Set(allDocuments.map(doc => doc.bumdes_name))];
+            
+            uniqueBumdes.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                filter.appendChild(option);
+            });
+        }
+        
+        function displayDocuments(documents) {
+            const container = document.getElementById('documents');
+            
+            if (documents.length === 0) {
+                container.innerHTML = '<div>No documents found.</div>';
+                return;
+            }
+            
+            const html = documents.map(doc => `
+                <div class="document">
+                    <div class="bumdes-name">${doc.bumdes_name}</div>
+                    <div><strong>Desa:</strong> ${doc.desa || 'N/A'}</div>
+                    <div><strong>Kecamatan:</strong> ${doc.kecamatan || 'N/A'}</div>
+                    <div><strong>Document:</strong> ${doc.document_type}</div>
+                    <div><strong>File:</strong> ${doc.filename || 'N/A'}</div>
+                    <div><strong>Status:</strong> <span class="status ${doc.status}">${doc.status}</span></div>
+                    ${doc.file_url ? `<div><a href="${doc.file_url}" target="_blank">View Document</a></div>` : ''}
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+        
+        function filterDocuments() {
+            const selectedBumdes = document.getElementById('bumdesFilter').value;
+            
+            if (selectedBumdes === '') {
+                displayDocuments(allDocuments);
+            } else {
+                const filtered = allDocuments.filter(doc => doc.bumdes_name === selectedBumdes);
+                displayDocuments(filtered);
+            }
+        }
+        
+        // Load documents on page load
+        loadDocuments();
+    </script>
+</body>
+</html>

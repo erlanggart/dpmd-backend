@@ -14,6 +14,45 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 class BumdesController extends Controller
 {
     /**
+     * Helper function to generate proper storage URL based on environment
+     *
+     * @param string $filePath
+     * @return string
+     */
+    private function getStorageUrl(string $filePath): string
+    {
+        // Determine folder based on file path
+        $folder = 'bumdes'; // default folder
+        
+        if (strpos($filePath, 'laporan_keuangan/') === 0) {
+            $folder = 'laporan_keuangan';
+            $filename = basename($filePath);
+        } elseif (strpos($filePath, 'dokumen_badanhukum/') === 0) {
+            $folder = 'dokumen_badanhukum';
+            $filename = basename($filePath);
+        } else {
+            // For files without folder prefix, assume they're in appropriate folders
+            $filename = basename($filePath);
+            // Determine folder based on context or default to bumdes
+            if (strpos($filename, 'laporan') !== false || strpos($filename, 'keuangan') !== false) {
+                $folder = 'laporan_keuangan';
+            } elseif (strpos($filename, 'perdes') !== false || strpos($filename, 'profil') !== false || 
+                      strpos($filename, 'berita') !== false || strpos($filename, 'anggaran') !== false || 
+                      strpos($filename, 'sk') !== false || strpos($filename, 'program') !== false) {
+                $folder = 'dokumen_badanhukum';
+            }
+        }
+        
+        if (config('app.env') === 'production') {
+            // Production: Use new API uploads route
+            return 'https://dpmdbogorkab.id/api/uploads/' . $folder . '/' . $filename;
+        } else {
+            // Development: Use new API uploads route
+            return config('app.url') . '/api/uploads/' . $folder . '/' . $filename;
+        }
+    }
+
+    /**
      * Helper function untuk mengunggah berkas dan menghapus berkas lama.
      *
      * @param Request $request
@@ -28,8 +67,33 @@ class BumdesController extends Controller
             if ($currentFilePath && Storage::disk('public')->exists($currentFilePath)) {
                 Storage::disk('public')->delete($currentFilePath);
             }
-            // Simpan berkas baru di folder 'bumdes_files'
-            return $request->file($fileKey)->store('bumdes_files', 'public');
+            
+            // Determine folder based on file type
+            $folder = 'bumdes'; // default
+            $laporanKeuanganFields = ['LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024'];
+            $dokumenBadanHukumFields = ['Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 'AnggaranRumahTangga', 'ProgramKerja', 'SK_BUM_Desa'];
+            
+            if (in_array($fileKey, $laporanKeuanganFields)) {
+                $folder = 'laporan_keuangan';
+            } elseif (in_array($fileKey, $dokumenBadanHukumFields)) {
+                $folder = 'dokumen_badanhukum';
+            }
+            
+            // Save to public/uploads/{folder} instead of storage/app/public
+            $file = $request->file($fileKey);
+            $filename = time() . '_' . $file->getClientOriginalName();
+            
+            // Create directory if it doesn't exist
+            $uploadPath = public_path('uploads/' . $folder);
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0755, true);
+            }
+            
+            // Move file to public/uploads/{folder}
+            $file->move($uploadPath, $filename);
+            
+            // Return just the filename (not the full path)
+            return $filename;
         }
         return $currentFilePath;
     }
@@ -513,15 +577,13 @@ class BumdesController extends Controller
      */
     public function getDokumenBadanHukum()
     {
+        \Illuminate\Support\Facades\Log::info('getDokumenBadanHukum called from: ' . request()->header('Origin'));
+        
         try {
             $documents = [];
             
-            // Get all BUMDes with their document fields
+            // Get all BUMDes with their dokumen badan hukum fields (tanpa laporan keuangan)
             $documentColumns = [
-                'LaporanKeuangan2021' => 'Laporan Keuangan 2021',
-                'LaporanKeuangan2022' => 'Laporan Keuangan 2022', 
-                'LaporanKeuangan2023' => 'Laporan Keuangan 2023',
-                'LaporanKeuangan2024' => 'Laporan Keuangan 2024',
                 'Perdes' => 'Peraturan Desa',
                 'ProfilBUMDesa' => 'Profil BUMDes',
                 'BeritaAcara' => 'Berita Acara',
@@ -539,15 +601,16 @@ class BumdesController extends Controller
                         $filePath = $bumdes->$column;
                         $filename = basename($filePath);
                         
-                        // Check if file exists in storage
-                        $fileExists = Storage::disk('public')->exists($filePath);
+                        // Check if file exists in public/uploads/dokumen_badanhukum
+                        $publicPath = public_path('uploads/dokumen_badanhukum/' . $filename);
+                        $fileExists = file_exists($publicPath);
                         $fileSize = 0;
                         $lastModified = time();
                         
                         if ($fileExists) {
                             try {
-                                $fileSize = Storage::disk('public')->size($filePath);
-                                $lastModified = Storage::disk('public')->lastModified($filePath);
+                                $fileSize = filesize($publicPath);
+                                $lastModified = filemtime($publicPath);
                             } catch (\Exception $e) {
                                 // File exists but may have permission issues
                                 $fileExists = false;
@@ -560,9 +623,11 @@ class BumdesController extends Controller
                             'document_type' => $column,
                             'document_label' => $columnLabel,
                             'size' => $fileSize,
+                            'file_size_formatted' => $this->formatBytes($fileSize),
                             'extension' => pathinfo($filename, PATHINFO_EXTENSION),
-                            'last_modified' => $lastModified,
-                            'url' => '/storage/' . $filePath,
+                            'last_modified' => date('Y-m-d H:i:s', $lastModified),
+                            'url' => '/api/uploads/dokumen_badanhukum/' . $filename,
+                            'download_url' => $fileExists ? $this->getStorageUrl('dokumen_badanhukum/' . $filename) : null,
                             'file_exists' => $fileExists,
                             'status' => $fileExists ? 'available' : 'missing',
                             'bumdes_info' => [
@@ -587,15 +652,16 @@ class BumdesController extends Controller
             }
             
             // Also scan dokumen_badanhukum folder for additional backup files
-            $documentsPath = 'dokumen_badanhukum';
-            if (Storage::disk('public')->exists($documentsPath)) {
-                $files = Storage::disk('public')->files($documentsPath);
+            $documentsPath = public_path('uploads/dokumen_badanhukum');
+            
+            if (is_dir($documentsPath)) {
+                $files = array_diff(scandir($documentsPath), array('.', '..'));
                 
-                foreach ($files as $file) {
-                    $fileName = basename($file);
+                foreach ($files as $fileName) {
+                    $filePath = $documentsPath . '/' . $fileName;
                     
-                    // Skip .gitignore and other system files
-                    if (in_array($fileName, ['.gitignore', '.DS_Store', 'Thumbs.db'])) {
+                    // Skip directories and system files
+                    if (is_dir($filePath) || in_array($fileName, ['.gitignore', '.DS_Store', 'Thumbs.db'])) {
                         continue;
                     }
                     
@@ -609,19 +675,29 @@ class BumdesController extends Controller
                     }
                     
                     if (!$alreadyInDb) {
+                        $matchedBumdes = $this->findMatchingBumdes($fileName);
+                        
+                        // Generate correct URL for public/uploads files
+                        $downloadUrl = $this->getStorageUrl('dokumen_badanhukum/' . $fileName);
+                        
                         $fileInfo = [
                             'filename' => $fileName,
-                            'original_path' => $file,
-                            'document_type' => 'backup_file',
-                            'document_label' => 'File Backup',
-                            'size' => Storage::disk('public')->size($file),
+                            'original_path' => 'uploads/dokumen_badanhukum/' . $fileName,
+                            'document_type' => 'unlinked',
+                            'document_label' => 'Tidak Terhubung',
+                            'size' => filesize($filePath),
+                            'file_size_formatted' => $this->formatBytes(filesize($filePath)),
                             'extension' => pathinfo($fileName, PATHINFO_EXTENSION),
-                            'last_modified' => Storage::disk('public')->lastModified($file),
-                            'url' => '/storage/' . $file,
+                            'last_modified' => date('Y-m-d H:i:s', filemtime($filePath)),
+                            'url' => '/api/uploads/dokumen_badanhukum/' . $fileName,
+                            'download_url' => $downloadUrl,
                             'file_exists' => true,
-                            'status' => 'backup',
+                            'status' => 'unlinked',
+                            'bumdes_name' => $matchedBumdes && count($matchedBumdes) > 0 ? $matchedBumdes[0]['namabumdesa'] : 'File Tidak Terhubung',
+                            'desa' => $matchedBumdes && count($matchedBumdes) > 0 ? $matchedBumdes[0]['desa'] : null,
+                            'kecamatan' => $matchedBumdes && count($matchedBumdes) > 0 ? $matchedBumdes[0]['kecamatan'] : null,
                             'bumdes_info' => null,
-                            'matched_bumdes' => $this->findMatchingBumdes($fileName)
+                            'matched_bumdes' => $matchedBumdes
                         ];
                         
                         $documents[] = $fileInfo;
@@ -663,16 +739,19 @@ class BumdesController extends Controller
             ];
             
             return response()->json([
-                'success' => true,
+                'status' => 'success',
+                'message' => 'Dokumen badan hukum berhasil diambil',  
                 'data' => $documents,
+                'total' => count($documents),
                 'summary' => $summary
             ]);
             
         } catch (\Exception $e) {
             Log::error('Error getting dokumen badan hukum: ' . $e->getMessage());
             return response()->json([
-                'success' => false,
-                'message' => 'Gagal mengambil data dokumen: ' . $e->getMessage()
+                'status' => 'error',
+                'message' => 'Gagal mengambil data dokumen: ' . $e->getMessage(),
+                'data' => []
             ], 500);
         }
     }
@@ -682,30 +761,34 @@ class BumdesController extends Controller
      */
     private function findMatchingBumdes($filename)
     {
-        $bumdesList = Bumdes::select('id', 'namabumdesa', 'desa', 'kecamatan')->get();
+        // EXACT FILENAME MATCHING ONLY
+        $bumdesList = Bumdes::all();
         $matches = [];
         
         foreach ($bumdesList as $bumdes) {
-            // Check if filename contains BUMDes name or desa name
-            $searchTerms = [
-                strtolower($bumdes->namabumdesa),
-                strtolower($bumdes->desa),
-                strtolower(str_replace(' ', '', $bumdes->desa)),
-                strtolower(str_replace(['BUMDES', 'BUM DESA', 'BUMDESA'], '', $bumdes->namabumdesa))
+            // Check all document fields for exact filename match
+            $documentFields = [
+                'Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 
+                'AnggaranRumahTangga', 'ProgramKerja', 'SK_BUM_Desa',
+                'LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024'
             ];
             
-            $filenameLower = strtolower($filename);
-            
-            foreach ($searchTerms as $term) {
-                if (!empty($term) && strlen($term) > 3 && strpos($filenameLower, $term) !== false) {
-                    $matches[] = [
-                        'id' => $bumdes->id,
-                        'namabumdesa' => $bumdes->namabumdesa,
-                        'desa' => $bumdes->desa,
-                        'kecamatan' => $bumdes->kecamatan,
-                        'match_term' => $term
-                    ];
-                    break; // Only add once per BUMDes
+            foreach ($documentFields as $field) {
+                if (!empty($bumdes->$field)) {
+                    $dbFilename = basename($bumdes->$field);
+                    
+                    // Exact match only
+                    if ($dbFilename === $filename) {
+                        $matches[] = [
+                            'id' => $bumdes->id,
+                            'namabumdesa' => $bumdes->namabumdesa,
+                            'desa' => $bumdes->desa,
+                            'kecamatan' => $bumdes->kecamatan,
+                            'match_field' => $field,
+                            'match_type' => 'exact'
+                        ];
+                        break; // Only add once per BUMDes
+                    }
                 }
             }
         }
@@ -713,40 +796,289 @@ class BumdesController extends Controller
         return $matches;
     }
 
-    /**
-     * Link document to specific BUMDes
-     */
-    public function linkDocument(Request $request)
-    {
-        $validated = $request->validate([
-            'filename' => 'required|string',
-            'bumdes_id' => 'required|integer|exists:bumdes,id',
-            'document_type' => 'required|string|in:perdes,anggaran_dasar,anggaran_rumah_tangga,berita_acara,sk_pengurus,program_kerja,profil,other'
-        ]);
 
+
+    /**
+     * Format file size in human readable format
+     */
+    private function formatBytes($size, $precision = 2)
+    {
+        if ($size === 0) return '0 B';
+        
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $power = floor(log($size, 1024));
+        
+        return round($size / pow(1024, $power), $precision) . ' ' . $units[$power];
+    }
+
+    /**
+     * Get laporan keuangan files for all BUMDes
+     */
+    public function getLaporanKeuangan()
+    {
+        \Illuminate\Support\Facades\Log::info('getLaporanKeuangan called from: ' . request()->header('Origin'));
+        
         try {
-            $bumdes = Bumdes::findOrFail($validated['bumdes_id']);
+            $documents = [];
             
-            // Create or update document linkage (this could be stored in a separate table)
-            // For now, we'll just return success and log the linkage
-            Log::info("Document linked: {$validated['filename']} -> BUMDes ID: {$validated['bumdes_id']} ({$bumdes->namabumdesa})");
+            // Get all BUMDes with their laporan keuangan fields
+            $laporanColumns = [
+                'LaporanKeuangan2021' => 'Laporan Keuangan 2021',
+                'LaporanKeuangan2022' => 'Laporan Keuangan 2022', 
+                'LaporanKeuangan2023' => 'Laporan Keuangan 2023',
+                'LaporanKeuangan2024' => 'Laporan Keuangan 2024',
+            ];
+            
+            $bumdesList = Bumdes::all();
+            
+            foreach ($bumdesList as $bumdes) {
+                foreach ($laporanColumns as $column => $columnLabel) {
+                    if (!empty($bumdes->$column)) {
+                        $filename = $bumdes->$column; // Langsung nama file tanpa path
+                        
+                        // Check if file exists in public/uploads/laporan_keuangan
+                        $publicPath = public_path('uploads/laporan_keuangan/' . $filename);
+                        $fileExists = file_exists($publicPath);
+                        $fileSize = 0;
+                        $lastModified = time();
+                        
+                        if ($fileExists) {
+                            try {
+                                $fileSize = filesize($publicPath);
+                                $lastModified = filemtime($publicPath);
+                            } catch (\Exception $e) {
+                                // If there's an error getting file info, continue with defaults
+                            }
+                        }
+                        
+                        $documents[] = [
+                            'id' => $bumdes->id,
+                            'bumdes_name' => $bumdes->namabumdesa,
+                            'kecamatan' => $bumdes->kecamatan,
+                            'desa' => $bumdes->desa,
+                            'bumdes_info' => [
+                                'id' => $bumdes->id,
+                                'namabumdesa' => $bumdes->namabumdesa,
+                                'desa' => $bumdes->desa,
+                                'kecamatan' => $bumdes->kecamatan
+                            ],
+                            'document_type' => $column,
+                            'document_label' => $columnLabel,
+                            'filename' => $filename,
+                            'file_path' => 'uploads/laporan_keuangan/' . $filename,
+                            'file_exists' => $fileExists,
+                            'file_size' => $fileSize,
+                            'file_size_formatted' => $this->formatBytes($fileSize),
+                            'last_modified' => date('Y-m-d H:i:s', $lastModified),
+                            'download_url' => $fileExists ? $this->getStorageUrl('laporan_keuangan/' . $filename) : null
+                        ];
+                    }
+                }
+            }
+            
+            // Also scan laporan_keuangan folder for additional backup files
+            $laporanPath = public_path('uploads/laporan_keuangan');
+            
+            if (is_dir($laporanPath)) {
+                $files = array_diff(scandir($laporanPath), array('.', '..'));
+                
+                foreach ($files as $fileName) {
+                    $filePath = $laporanPath . '/' . $fileName;
+                    
+                    // Skip directories and system files
+                    if (is_dir($filePath) || in_array($fileName, ['.gitignore', '.DS_Store', 'Thumbs.db'])) {
+                        continue;
+                    }
+                    
+                    // Check if this file is already linked to a BUMDes
+                    $linkedBumdes = Bumdes::where('LaporanKeuangan2021', $fileName)
+                                         ->orWhere('LaporanKeuangan2022', $fileName)
+                                         ->orWhere('LaporanKeuangan2023', $fileName)
+                                         ->orWhere('LaporanKeuangan2024', $fileName)
+                                         ->first();
+                    
+                    if (!$linkedBumdes) {
+                        // Try to find matching BUMDes for unlinked files
+                        $matchedBumdes = $this->findMatchingBumdes($fileName);
+                        
+                        // If we found a match, create bumdes_info structure
+                        $bumdesInfo = null;
+                        if ($matchedBumdes && count($matchedBumdes) > 0) {
+                            $firstMatch = $matchedBumdes[0];
+                            $bumdesInfo = [
+                                'id' => $firstMatch['id'],
+                                'namabumdesa' => $firstMatch['namabumdesa'],
+                                'desa' => $firstMatch['desa'],
+                                'kecamatan' => $firstMatch['kecamatan']
+                            ];
+                        }
+                        
+                        // Generate correct URL for public/uploads files
+                        $downloadUrl = $this->getStorageUrl('laporan_keuangan/' . $fileName);
+                        
+                        $documents[] = [
+                            'id' => null,
+                            'bumdes_name' => $matchedBumdes && count($matchedBumdes) > 0 ? $matchedBumdes[0]['namabumdesa'] : 'File Tidak Terhubung',
+                            'kecamatan' => $matchedBumdes && count($matchedBumdes) > 0 ? $matchedBumdes[0]['kecamatan'] : null,
+                            'desa' => $matchedBumdes && count($matchedBumdes) > 0 ? $matchedBumdes[0]['desa'] : null,
+                            'bumdes_info' => $bumdesInfo, // Add bumdes_info for matched files
+                            'document_type' => $bumdesInfo ? 'matched' : 'unlinked', // Change type if matched
+                            'document_label' => 'File Laporan Keuangan',
+                            'filename' => $fileName,
+                            'file_path' => 'uploads/laporan_keuangan/' . $fileName,
+                            'file_exists' => true,
+                            'file_size' => filesize($filePath),
+                            'file_size_formatted' => $this->formatBytes(filesize($filePath)),
+                            'last_modified' => date('Y-m-d H:i:s', filemtime($filePath)),
+                            'download_url' => $downloadUrl,
+                            'matched_bumdes' => $matchedBumdes
+                        ];
+                    }
+                }
+            }
+            
+            // Sort by BUMDes name, then by document type
+            usort($documents, function($a, $b) {
+                if ($a['bumdes_name'] == $b['bumdes_name']) {
+                    return strcmp($a['document_type'], $b['document_type']);
+                }
+                return strcmp($a['bumdes_name'], $b['bumdes_name']);
+            });
             
             return response()->json([
-                'success' => true,
-                'message' => "Dokumen berhasil dikaitkan dengan {$bumdes->namabumdesa}",
-                'data' => [
-                    'filename' => $validated['filename'],
-                    'bumdes' => $bumdes,
-                    'document_type' => $validated['document_type']
+                'status' => 'success',
+                'message' => 'Laporan keuangan berhasil diambil',
+                'data' => $documents,
+                'total' => count($documents),
+                'summary' => [
+                    'total_files' => count($documents),
+                    'files_exist' => count(array_filter($documents, fn($doc) => $doc['file_exists'])),
+                    'files_missing' => count(array_filter($documents, fn($doc) => !$doc['file_exists'])),
+                    'unlinked_files' => count(array_filter($documents, fn($doc) => $doc['document_type'] === 'unlinked'))
                 ]
             ]);
             
         } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengambil data laporan keuangan: ' . $e->getMessage(),
+                'data' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * Link a document to a specific BUMDes
+     */
+    public function linkDocument(Request $request)
+    {
+        try {
+            $request->validate([
+                'filename' => 'required|string',
+                'bumdes_id' => 'required|integer|exists:bumdes,id',
+                'document_type' => 'required|in:dokumen_badan_hukum,laporan_keuangan'
+            ]);
+
+            $bumdes = Bumdes::findOrFail($request->bumdes_id);
+            $filename = $request->filename;
+            $documentType = $request->document_type;
+
+            // Check if file exists in public/uploads
+            $publicPath = public_path('uploads/' . $documentType . '/' . $filename);
+            $fileExists = file_exists($publicPath);
+            
+            if (!$fileExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File tidak ditemukan di public/uploads/' . $documentType
+                ], 404);
+            }
+
+            // Determine which field to update based on document type
+            if ($documentType === 'dokumen_badan_hukum') {
+                // For dokumen badan hukum, we need to determine the specific field
+                // Based on filename pattern, assign to appropriate field
+                $fieldToUpdate = $this->determineDocumentField($filename);
+                
+                if ($fieldToUpdate) {
+                    $bumdes->update([$fieldToUpdate => $filename]);
+                    $message = "Dokumen {$filename} berhasil dikaitkan dengan BUMDes {$bumdes->namabumdesa} sebagai {$fieldToUpdate}";
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Tidak dapat menentukan jenis dokumen badan hukum'
+                    ], 400);
+                }
+            } else {
+                // For laporan keuangan, determine year from filename
+                $year = $this->extractYearFromFilename($filename);
+                $fieldToUpdate = "LaporanKeuangan{$year}";
+                
+                // Check if the field exists in database schema
+                $validFields = ['LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024'];
+                
+                if (in_array($fieldToUpdate, $validFields)) {
+                    $bumdes->update([$fieldToUpdate => $filename]);
+                    $message = "Laporan keuangan {$filename} berhasil dikaitkan dengan BUMDes {$bumdes->namabumdesa} untuk tahun {$year}";
+                } else {
+                    // Default to LaporanKeuangan2024 if year cannot be determined
+                    $bumdes->update(['LaporanKeuangan2024' => $filename]);
+                    $message = "Laporan keuangan {$filename} berhasil dikaitkan dengan BUMDes {$bumdes->namabumdesa} (default tahun 2024)";
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message
+            ]);
+
+        } catch (\Exception $e) {
             Log::error('Error linking document: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengaitkan dokumen'
+                'message' => 'Terjadi kesalahan saat mengaitkan dokumen: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Determine document field based on filename
+     */
+    private function determineDocumentField($filename)
+    {
+        $filename = strtolower($filename);
+        
+        if (strpos($filename, 'perdes') !== false || strpos($filename, 'peraturan') !== false) {
+            return 'Perdes';
+        } elseif (strpos($filename, 'profil') !== false || strpos($filename, 'profile') !== false) {
+            return 'ProfilBUMDesa';
+        } elseif (strpos($filename, 'berita') !== false || strpos($filename, 'ba') !== false || strpos($filename, 'musdes') !== false) {
+            return 'BeritaAcara';
+        } elseif (strpos($filename, 'anggaran dasar') !== false || strpos($filename, 'ad') !== false) {
+            return 'AnggaranDasar';
+        } elseif (strpos($filename, 'anggaran rumah tangga') !== false || strpos($filename, 'art') !== false) {
+            return 'AnggaranRumahTangga';
+        } elseif (strpos($filename, 'program kerja') !== false || strpos($filename, 'proker') !== false || strpos($filename, 'rencana') !== false) {
+            return 'ProgramKerja';
+        } elseif (strpos($filename, 'sk') !== false || strpos($filename, 'surat keputusan') !== false) {
+            return 'SK_BUM_Desa';
+        }
+        
+        // Default to ProfilBUMDesa if cannot determine
+        return 'ProfilBUMDesa';
+    }
+
+    /**
+     * Extract year from filename
+     */
+    private function extractYearFromFilename($filename)
+    {
+        // Look for 4-digit year in filename
+        if (preg_match('/20(21|22|23|24)/', $filename, $matches)) {
+            return '20' . $matches[1];
+        }
+        
+        // Default to current year or 2024
+        return '2024';
     }
 }
