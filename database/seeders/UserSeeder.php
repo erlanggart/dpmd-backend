@@ -20,22 +20,5 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'superadmin'
         ]);
-
-        // 2. Admin Bidang
-        $adminBidang = User::create([
-            'name' => 'Admin Bidang Pemberdayaan',
-            'email' => 'bidang@dpmd.bogorkab.go.id',
-            'password' => Hash::make('password'),
-            'role' => 'pemberdayaan_masyarakat'
-        ]);
-
-
-        // 5. Admin Dinas Terkait
-        $adminDinas = User::create([
-            'name' => 'Admin Dinas Kominfo',
-            'email' => 'dinas@dpmd.bogorkab.go.id',
-            'password' => Hash::make('password'),
-            'role' => 'dinas'
-        ]);
     }
 }

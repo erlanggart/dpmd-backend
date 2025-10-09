@@ -58,7 +58,7 @@ return [
 
         'musdesus' => [
             'driver' => 'local',
-            'root' => env('APP_ENV') === 'production' 
+            'root' => env('APP_ENV') === 'production'
                 ? base_path('../public_html/api/uploads/musdesus')
                 : storage_path('app/public/musdesus'),
             'url' => env('APP_ENV') === 'production'
@@ -96,6 +96,7 @@ return [
 
     'links' => [
         public_path('storage') => storage_path('app/public'),
+        public_path('uploads') => storage_path('app/uploads'),
     ],
 
 ];

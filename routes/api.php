@@ -12,6 +12,16 @@ use App\Http\Controllers\Api\HeroGalleryController;
 use App\Http\Controllers\Api\ProfilDesaController;
 use App\Http\Controllers\Api\Desa\ProdukHukumController;
 use App\Http\Controllers\Api\Desa\AparaturDesaController;
+use App\Http\Controllers\Api\Desa\RwController;
+use App\Http\Controllers\Api\Desa\RtController;
+use App\Http\Controllers\Api\Desa\PengurusController;
+use App\Http\Controllers\Api\Desa\PosyanduController;
+use App\Http\Controllers\Api\Desa\KarangTarunaController;
+use App\Http\Controllers\Api\Desa\LpmController;
+use App\Http\Controllers\Api\Desa\SatlinmasController;
+use App\Http\Controllers\Api\Desa\PkkController;
+use App\Http\Controllers\Api\Desa\KelembagaanController;
+use App\Http\Controllers\Api\MusdesusMonitoringController;
 
 use App\Http\Controllers\Api\BumdesController;
 use App\Http\Controllers\Api\Perjadin\KegiatanController as PerjadinKegiatanController;
@@ -84,19 +94,19 @@ Route::get('/public/musdesus/stats', function () {
     try {
         $totalFiles = \App\Models\Musdesus::count();
         $totalSize = \App\Models\Musdesus::sum('ukuran_file');
-        
+
         // Stats by kecamatan dengan jumlah desa yang upload
         $kecamatanStats = \App\Models\Musdesus::join('kecamatans', 'musdesus.kecamatan_id', '=', 'kecamatans.id')
-                                             ->selectRaw('
+            ->selectRaw('
                                                  kecamatans.id,
                                                  kecamatans.nama,
                                                  count(DISTINCT musdesus.desa_id) as desa_upload,
                                                  count(*) as total_files
                                              ')
-                                             ->groupBy('kecamatans.id', 'kecamatans.nama')
-                                             ->orderBy('desa_upload', 'desc')
-                                             ->limit(15)
-                                             ->get();
+            ->groupBy('kecamatans.id', 'kecamatans.nama')
+            ->orderBy('desa_upload', 'desc')
+            ->limit(15)
+            ->get();
 
         // Add total desa per kecamatan
         foreach ($kecamatanStats as $kecamatan) {
@@ -104,20 +114,20 @@ Route::get('/public/musdesus/stats', function () {
             $kecamatan->total_desa = $totalDesa;
             $kecamatan->percentage = $totalDesa > 0 ? round(($kecamatan->desa_upload / $totalDesa) * 100, 1) : 0;
         }
-        
+
         // Stats desa yang sudah upload (Top 20)
         $desaStats = \App\Models\Musdesus::join('desas', 'musdesus.desa_id', '=', 'desas.id')
-                                        ->join('kecamatans', 'desas.kecamatan_id', '=', 'kecamatans.id')
-                                        ->selectRaw('
+            ->join('kecamatans', 'desas.kecamatan_id', '=', 'kecamatans.id')
+            ->selectRaw('
                                             desas.nama as desa_nama,
                                             kecamatans.nama as kecamatan_nama,
                                             count(*) as jumlah_upload
                                         ')
-                                        ->groupBy('desas.id', 'desas.nama', 'kecamatans.nama')
-                                        ->orderBy('jumlah_upload', 'desc')
-                                        ->limit(20)
-                                        ->get();
-        
+            ->groupBy('desas.id', 'desas.nama', 'kecamatans.nama')
+            ->orderBy('jumlah_upload', 'desc')
+            ->limit(20)
+            ->get();
+
         // File type distribution
         $fileTypeStats = \App\Models\Musdesus::selectRaw('
                                 CASE 
@@ -128,15 +138,15 @@ Route::get('/public/musdesus/stats', function () {
                                 END as file_type, 
                                 count(*) as count
                             ')
-                            ->groupBy('file_type')
-                            ->get();
+            ->groupBy('file_type')
+            ->get();
 
         // Summary stats
         $totalDesaUpload = \App\Models\Musdesus::distinct('desa_id')->count('desa_id');
         $totalKecamatanUpload = \App\Models\Musdesus::distinct('kecamatan_id')->count('kecamatan_id');
         $totalDesa = \App\Models\Desa::count();
         $totalKecamatan = \App\Models\Kecamatan::count();
-        
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -167,10 +177,10 @@ Route::get('/public/musdesus/stats', function () {
 Route::get('/public/musdesus/files', function () {
     try {
         $files = \App\Models\Musdesus::with(['desa', 'kecamatan'])
-                                    ->orderBy('created_at', 'desc')
-                                    ->limit(100)
-                                    ->get();
-        
+            ->orderBy('created_at', 'desc')
+            ->limit(100)
+            ->get();
+
         return response()->json([
             'success' => true,
             'data' => $files
@@ -265,6 +275,26 @@ Route::middleware(['auth:sanctum', 'role:desa'])->prefix('desa')->group(function
     Route::put('/produk-hukum/status/{id}', [ProdukHukumController::class, 'updateStatus']);
     Route::apiResource('/aparatur-desa', AparaturDesaController::class);
     Route::post('/aparatur-desa/{id}', [AparaturDesaController::class, 'update']);
+
+    // Kelembagaan Desa: Summary & Counts
+    Route::get('/kelembagaan/summary', [KelembagaanController::class, 'getSummary']);
+    Route::get('/kelembagaan/detailed-summary', [KelembagaanController::class, 'getDetailedSummary']);
+
+    // Kelembagaan Desa: RW, RT, dan Pengurus (polymorphic)
+    Route::apiResource('/rw', RwController::class);
+    Route::apiResource('/rt', RtController::class);
+
+    // Pengurus routes
+    Route::get('/pengurus/by-kelembagaan', [PengurusController::class, 'byKelembagaan']);
+    Route::get('/pengurus/history', [PengurusController::class, 'history']);
+    Route::put('/pengurus/{id}/status', [PengurusController::class, 'updateStatus']);
+    Route::apiResource('/pengurus', PengurusController::class)->except(['destroy']);
+
+    Route::apiResource('/posyandu', PosyanduController::class)->except(['show']);
+    Route::apiResource('/karang-taruna', KarangTarunaController::class)->except(['show']);
+    Route::apiResource('/lpm', LpmController::class)->except(['show']);
+    Route::apiResource('/satlinmas', SatlinmasController::class)->except(['show']);
+    Route::apiResource('/pkk', PkkController::class)->except(['show']);
 });
 
 // Routes untuk Musdesus (Public - tidak perlu auth)
@@ -282,6 +312,10 @@ Route::middleware(['auth:sanctum', 'role:superadmin|sekretariat'])->prefix('admi
     Route::get('/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'show']);
     Route::put('/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'update']);
     Route::delete('/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'destroy']);
+
+    // Routes untuk monitoring 37 desa target
+    Route::get('/monitoring/dashboard', [MusdesusMonitoringController::class, 'getDashboardData']);
+    Route::get('/monitoring/desa/{petugasId}', [MusdesusMonitoringController::class, 'getDesaDetail']);
 });
 
 // Secure admin-only delete musdesus endpoint for public stats page
