@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\Perjadin\DashboardController as PerjadinDashboardCo
 use App\Http\Controllers\Api\Perjadin\BidangController as PerjadinBidangController;
 use App\Http\Controllers\Api\Perjadin\PersonilController as PerjadinPersonilController;
 use App\Http\Controllers\Api\Perjadin\StatistikController as PerjadinStatistikController;
+use App\Http\Controllers\DesaController;
 use App\Models\Kecamatan;
 use App\Models\Desa;
 
