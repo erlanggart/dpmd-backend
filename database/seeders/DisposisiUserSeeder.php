@@ -42,41 +42,69 @@ class DisposisiUserSeeder extends Seeder
                 'description' => 'Sekretaris Dinas untuk meneruskan disposisi'
             ],
 
-            // Kepala Bidang Pemerintahan
+            // Bidang Pemerintahan Desa
             [
-                'name' => 'Kepala Bidang Pemerintahan',
-                'email' => 'kepala.pemerintahan@dpmd.bogorkab.go.id',
+                'name' => 'User Pemerintahan Desa',
+                'email' => 'pemerintahan.desa@dpmd.bogorkab.go.id',
                 'password' => Hash::make('password'),
-                'role' => 'kepala_bidang_pemerintahan',
-                'description' => 'Kepala Bidang Pemerintahan Desa'
+                'role' => 'pemerintahan_desa',
+                'description' => 'User Bidang Pemerintahan Desa'
             ],
 
-            // Kepala Bidang Kesejahteraan Rakyat
+            // Bidang Sarana Prasarana
             [
-                'name' => 'Kepala Bidang Kesejahteraan Rakyat',
-                'email' => 'kepala.kesra@dpmd.bogorkab.go.id',
+                'name' => 'User Sarana Prasarana',
+                'email' => 'sarana.prasarana@dpmd.bogorkab.go.id',
                 'password' => Hash::make('password'),
-                'role' => 'kepala_bidang_kesra',
-                'description' => 'Kepala Bidang Kesejahteraan Rakyat'
+                'role' => 'sarana_prasarana',
+                'description' => 'User Bidang Sarana Prasarana'
             ],
 
-            // Kepala Bidang Ekonomi
+            // Bidang Kekayaan Keuangan
             [
-                'name' => 'Kepala Bidang Ekonomi',
-                'email' => 'kepala.ekonomi@dpmd.bogorkab.go.id',
+                'name' => 'User Kekayaan Keuangan',
+                'email' => 'kekayaan.keuangan@dpmd.bogorkab.go.id',
                 'password' => Hash::make('password'),
-                'role' => 'kepala_bidang_ekonomi',
-                'description' => 'Kepala Bidang Ekonomi'
+                'role' => 'kekayaan_keuangan',
+                'description' => 'User Bidang Kekayaan Keuangan'
             ],
 
-            // Kepala Bidang Fisik dan Prasarana
+            // Bidang Pemberdayaan Masyarakat
             [
-                'name' => 'Kepala Bidang Fisik dan Prasarana',
-                'email' => 'kepala.fisik@dpmd.bogorkab.go.id',
+                'name' => 'User Pemberdayaan Masyarakat',
+                'email' => 'pemberdayaan.masyarakat@dpmd.bogorkab.go.id',
                 'password' => Hash::make('password'),
-                'role' => 'kepala_bidang_fisik',
-                'description' => 'Kepala Bidang Fisik dan Prasarana'
+                'role' => 'pemberdayaan_masyarakat',
+                'description' => 'User Bidang Pemberdayaan Masyarakat'
             ],
+
+            // Departemen Sekretariat
+            [
+                'name' => 'User Sekretariat',
+                'email' => 'sekretariat@dpmd.bogorkab.go.id',
+                'password' => Hash::make('password'),
+                'role' => 'sekretariat',
+                'description' => 'User Departemen Sekretariat'
+            ],
+
+            // Departemen Program dan Pelaporan
+            [
+                'name' => 'User Program dan Pelaporan',
+                'email' => 'prolap@dpmd.bogorkab.go.id',
+                'password' => Hash::make('password'),
+                'role' => 'prolap',
+                'description' => 'User Departemen Program dan Pelaporan'
+            ],
+
+            // Departemen Keuangan
+            [
+                'name' => 'User Keuangan',
+                'email' => 'keuangan@dpmd.bogorkab.go.id',
+                'password' => Hash::make('password'),
+                'role' => 'keuangan',
+                'description' => 'User Departemen Keuangan'
+            ],
+
         ];
 
         $this->command->info('Membuat akun untuk sistem disposisi persuratan...');
@@ -110,15 +138,23 @@ class DisposisiUserSeeder extends Seeder
         }
 
         $this->command->info('');
-        $this->command->info('=== AKUN DISPOSISI PERSURATAN ===');
+        $this->command->info('=== AKUN SISTEM DISPOSISI PERSURATAN ===');
+        $this->command->info('=== TINGKAT DINAS ===');
         $this->command->info('Email: staff.sekretariat@dpmd.bogorkab.go.id | Password: password | Role: staff');
         $this->command->info('Email: kepala.dinas@dpmd.bogorkab.go.id | Password: password | Role: kepala_dinas');
         $this->command->info('Email: sekretaris.dinas@dpmd.bogorkab.go.id | Password: password | Role: sekretaris_dinas');
-        $this->command->info('Email: kepala.pemerintahan@dpmd.bogorkab.go.id | Password: password | Role: kepala_bidang_pemerintahan');
-        $this->command->info('Email: kepala.kesra@dpmd.bogorkab.go.id | Password: password | Role: kepala_bidang_kesra');
-        $this->command->info('Email: kepala.ekonomi@dpmd.bogorkab.go.id | Password: password | Role: kepala_bidang_ekonomi');
-        $this->command->info('Email: kepala.fisik@dpmd.bogorkab.go.id | Password: password | Role: kepala_bidang_fisik');
         $this->command->info('');
-        $this->command->info('Semua akun disposisi persuratan berhasil dibuat!');
+        $this->command->info('=== BIDANG-BIDANG DPMD ===');
+        $this->command->info('Email: pemerintahan.desa@dpmd.bogorkab.go.id | Password: password | Role: pemerintahan_desa');
+        $this->command->info('Email: sarana.prasarana@dpmd.bogorkab.go.id | Password: password | Role: sarana_prasarana');
+        $this->command->info('Email: kekayaan.keuangan@dpmd.bogorkab.go.id | Password: password | Role: kekayaan_keuangan');
+        $this->command->info('Email: pemberdayaan.masyarakat@dpmd.bogorkab.go.id | Password: password | Role: pemberdayaan_masyarakat');
+        $this->command->info('');
+        $this->command->info('=== DEPARTEMEN DPMD ===');
+        $this->command->info('Email: sekretariat@dpmd.bogorkab.go.id | Password: password | Role: sekretariat');
+        $this->command->info('Email: prolap@dpmd.bogorkab.go.id | Password: password | Role: prolap');
+        $this->command->info('Email: keuangan@dpmd.bogorkab.go.id | Password: password | Role: keuangan');
+        $this->command->info('');
+        $this->command->info('Semua akun sistem disposisi persuratan berhasil dibuat!');
     }
 }

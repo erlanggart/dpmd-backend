@@ -46,4 +46,46 @@ class ProdukHukum extends Model
     {
         return $this->belongsTo(Desa::class);
     }
+
+    // Relasi untuk SK Pembentukan Lembaga
+    public function rws()
+    {
+        return $this->hasMany(Rw::class, 'produk_hukum_id');
+    }
+
+    public function rts()
+    {
+        return $this->hasMany(Rt::class, 'produk_hukum_id');
+    }
+
+    public function posyandus()
+    {
+        return $this->hasMany(Posyandu::class, 'produk_hukum_id');
+    }
+
+    public function karangTarunas()
+    {
+        return $this->hasMany(KarangTaruna::class, 'produk_hukum_id');
+    }
+
+    public function lpms()
+    {
+        return $this->hasMany(Lpm::class, 'produk_hukum_id');
+    }
+
+    public function pkks()
+    {
+        return $this->hasMany(Pkk::class, 'produk_hukum_id');
+    }
+
+    public function satlinmas()
+    {
+        return $this->hasMany(Satlinmas::class, 'produk_hukum_id');
+    }
+
+    // Relasi untuk SK Pengangkatan Pengurus
+    public function pengurus()
+    {
+        return $this->hasMany(Pengurus::class, 'produk_hukum_id');
+    }
 }

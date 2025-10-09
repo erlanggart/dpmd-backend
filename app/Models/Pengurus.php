@@ -42,4 +42,9 @@ class Pengurus extends Model
     {
         return $this->morphTo();
     }
+
+    public function produkHukum()
+    {
+        return $this->belongsTo(ProdukHukum::class, 'produk_hukum_id');
+    }
 }

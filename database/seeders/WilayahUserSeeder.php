@@ -49,15 +49,5 @@ class WilayahUserSeeder extends Seeder
                 ]
             );
         }
-
-        // --- BUAT AKUN ADMIN DINAS ---
-        $userDinas = User::updateOrCreate(
-            ['email' => 'dinas@dpmd.bogorkab.go.id'],
-            [
-                'name' => 'Admin Dinas DPMD',
-                'password' => Hash::make('password'),
-                'role' => 'dinas', // Role untuk admin dinas
-            ]
-        );
     }
 }
