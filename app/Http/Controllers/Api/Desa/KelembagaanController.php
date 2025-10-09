@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\Desa;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Log;
+
 use App\Models\Rt;
 use App\Models\Rw;
 use App\Models\Posyandu;

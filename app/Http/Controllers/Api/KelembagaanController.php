@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Kecamatan;
 use App\Models\Desa;
-use App\Models\RW;
-use App\Models\RT;
+use App\Models\Rw;
+use App\Models\Rt;
 use App\Models\Posyandu;
 use App\Models\KarangTaruna;
 use App\Models\Lpm;
@@ -33,7 +33,7 @@ class KelembagaanController extends Controller
                 $desaIds = $kecamatan->desas->pluck('id');
 
                 // Get all kelembagaan data for this kecamatan's desas (hanya yang aktif)
-                $rws = RW::whereIn('desa_id', $desaIds)
+                $rws = Rw::whereIn('desa_id', $desaIds)
                     ->where('status_kelembagaan', 'aktif')
                     ->with([
                         'rts' => function ($query) {
@@ -184,8 +184,8 @@ class KelembagaanController extends Controller
             $totalDesaKelurahan = $totalDesa + $totalKelurahan;
 
             // Count kelembagaan (hanya yang aktif)
-            $totalRw = RW::where('status_kelembagaan', 'aktif')->count();
-            $totalRt = RT::where('status_kelembagaan', 'aktif')->count();
+            $totalRw = Rw::where('status_kelembagaan', 'aktif')->count();
+            $totalRt = Rt::where('status_kelembagaan', 'aktif')->count();
             $totalPosyandu = Posyandu::where('status_kelembagaan', 'aktif')->count();
             $totalKarangTaruna = KarangTaruna::where('status_kelembagaan', 'aktif')->count();
             $totalLpm = Lpm::where('status_kelembagaan', 'aktif')->count();
@@ -241,8 +241,8 @@ class KelembagaanController extends Controller
             // Stats untuk desa (hanya yang aktif)
             $desaStats = [
                 'count' => $totalDesa,
-                'rw' => RW::whereIn('desa_id', $desaIds)->where('status_kelembagaan', 'aktif')->count(),
-                'rt' => RT::whereHas('rw', function ($query) use ($desaIds) {
+                'rw' => Rw::whereIn('desa_id', $desaIds)->where('status_kelembagaan', 'aktif')->count(),
+                'rt' => Rt::whereHas('rw', function ($query) use ($desaIds) {
                     $query->whereIn('desa_id', $desaIds)->where('status_kelembagaan', 'aktif');
                 })->where('status_kelembagaan', 'aktif')->count(),
                 'posyandu' => Posyandu::whereIn('desa_id', $desaIds)->where('status_kelembagaan', 'aktif')->count(),
@@ -257,11 +257,9 @@ class KelembagaanController extends Controller
                         })->count(),
                     'rt' => Pengurus::where('pengurusable_type', 'App\Models\Rt')
                         ->where('status_jabatan', 'aktif')
-                        ->whereHas('pengurusable.rw', function ($query) use ($desaIds) {
-                            $query->whereIn('desa_id', $desaIds)->where('status_kelembagaan', 'aktif');
-                        })
-                        ->whereHas('pengurusable', function ($query) {
-                            $query->where('status_kelembagaan', 'aktif');
+                        ->whereHas('pengurusable', function ($query) use ($desaIds) {
+                            $query->where('status_kelembagaan', 'aktif')
+                                ->whereIn('desa_id', $desaIds);
                         })->count(),
                     'posyandu' => Pengurus::where('pengurusable_type', 'App\Models\Posyandu')
                         ->where('status_jabatan', 'aktif')
@@ -289,8 +287,8 @@ class KelembagaanController extends Controller
             // Stats untuk kelurahan (hanya yang aktif)
             $kelurahanStats = [
                 'count' => $totalKelurahan,
-                'rw' => RW::whereIn('desa_id', $kelurahanIds)->where('status_kelembagaan', 'aktif')->count(),
-                'rt' => RT::whereHas('rw', function ($query) use ($kelurahanIds) {
+                'rw' => Rw::whereIn('desa_id', $kelurahanIds)->where('status_kelembagaan', 'aktif')->count(),
+                'rt' => Rt::whereHas('rw', function ($query) use ($kelurahanIds) {
                     $query->whereIn('desa_id', $kelurahanIds)->where('status_kelembagaan', 'aktif');
                 })->where('status_kelembagaan', 'aktif')->count(),
                 'posyandu' => Posyandu::whereIn('desa_id', $kelurahanIds)->where('status_kelembagaan', 'aktif')->count(),
@@ -305,11 +303,9 @@ class KelembagaanController extends Controller
                         })->count(),
                     'rt' => Pengurus::where('pengurusable_type', 'App\Models\Rt')
                         ->where('status_jabatan', 'aktif')
-                        ->whereHas('pengurusable.rw', function ($query) use ($kelurahanIds) {
-                            $query->whereIn('desa_id', $kelurahanIds)->where('status_kelembagaan', 'aktif');
-                        })
-                        ->whereHas('pengurusable', function ($query) {
-                            $query->where('status_kelembagaan', 'aktif');
+                        ->whereHas('pengurusable', function ($query) use ($kelurahanIds) {
+                            $query->where('status_kelembagaan', 'aktif')
+                                ->whereIn('desa_id', $kelurahanIds);
                         })->count(),
                     'posyandu' => Pengurus::where('pengurusable_type', 'App\Models\Posyandu')
                         ->where('status_jabatan', 'aktif')
@@ -407,7 +403,7 @@ class KelembagaanController extends Controller
             $desaIds = $kecamatan->desas->pluck('id');
 
             // Get all kelembagaan data for this kecamatan's desas
-            $rws = RW::whereIn('desa_id', $desaIds)->with('rts')->get();
+            $rws = Rw::whereIn('desa_id', $desaIds)->with('rts')->get();
             $posyandus = Posyandu::whereIn('desa_id', $desaIds)->get();
             $karangTarunas = KarangTaruna::whereIn('desa_id', $desaIds)->get();
             $lpms = Lpm::whereIn('desa_id', $desaIds)->get();
@@ -488,8 +484,8 @@ class KelembagaanController extends Controller
             }
 
             // Count kelembagaan for this desa
-            $rwCount = RW::where('desa_id', $desaId)->count();
-            $rtCount = RT::whereHas('rw', function ($query) use ($desaId) {
+            $rwCount = Rw::where('desa_id', $desaId)->count();
+            $rtCount = Rt::whereHas('rw', function ($query) use ($desaId) {
                 $query->where('desa_id', $desaId);
             })->count();
             $posyanduCount = Posyandu::where('desa_id', $desaId)->count();
@@ -551,7 +547,7 @@ class KelembagaanController extends Controller
                 ], 404);
             }
 
-            $rwList = RW::where('desa_id', $desaId)
+            $rwList = Rw::where('desa_id', $desaId)
                 ->with(['pengurus', 'rts' => function ($query) {
                     $query->with('pengurus');
                 }])
@@ -609,7 +605,7 @@ class KelembagaanController extends Controller
                 ], 404);
             }
 
-            $rtList = RT::where('desa_id', $desaId)
+            $rtList = Rt::where('desa_id', $desaId)
                 ->with(['pengurus' => function ($query) {
                     $query->where(function ($q) {
                         $q->where('jabatan', 'Ketua RT')
@@ -835,7 +831,7 @@ class KelembagaanController extends Controller
                 ], 404);
             }
 
-            $rtList = RT::where('desa_id', $desaId)
+            $rtList = Rt::where('desa_id', $desaId)
                 ->with(['pengurus', 'rw'])
                 ->get()
                 ->map(function ($rt) {
@@ -873,7 +869,7 @@ class KelembagaanController extends Controller
     public function showRW($id)
     {
         try {
-            $rw = RW::with(['desa', 'rts.pengurus', 'pengurus.produkHukum'])
+            $rw = Rw::with(['desa', 'rts.pengurus', 'pengurus.produkHukum'])
                 ->findOrFail($id);
 
             return response()->json([
@@ -896,7 +892,7 @@ class KelembagaanController extends Controller
     public function showRT($id)
     {
         try {
-            $rt = RT::with(['desa', 'rw', 'pengurus.produkHukum'])
+            $rt = Rt::with(['desa', 'rw', 'pengurus.produkHukum'])
                 ->findOrFail($id);
 
             return response()->json([
