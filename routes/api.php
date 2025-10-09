@@ -2,6 +2,8 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
@@ -24,7 +26,6 @@ use App\Http\Controllers\Api\Perjadin\StatistikController as PerjadinStatistikCo
 use App\Models\Kecamatan;
 use App\Models\Desa;
 
-use Illuminate\Support\Facades\File;
 
 Route::middleware(['auth:sanctum', 'role:superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa'])->group(function () {
     Route::get('/users', [UserController::class, 'index']);
@@ -138,6 +139,8 @@ Route::get('/public/musdesus/stats', function () {
         // Summary stats
         $totalDesaUpload = \App\Models\Musdesus::distinct('desa_id')->count('desa_id');
         $totalKecamatanUpload = \App\Models\Musdesus::distinct('kecamatan_id')->count('kecamatan_id');
+
+        
         $totalDesa = \App\Models\Desa::count();
         $totalKecamatan = \App\Models\Kecamatan::count();
         
@@ -168,6 +171,22 @@ Route::get('/public/musdesus/stats', function () {
 });
 
 // Public musdesus files list endpoint
+// Serve uploaded files under /api/uploads/{folder}/{filename}
+Route::get('uploads/{folder}/{filename}', function ($folder, $filename) {
+    // sanitize inputs to prevent directory traversal
+    $folder = basename($folder);
+    $filename = basename($filename);
+
+    $publicPath = public_path("uploads/{$folder}/{$filename}");
+
+    if (!\Illuminate\Support\Facades\File::exists($publicPath)) {
+        return response()->json(['message' => 'File not found'], 404);
+    }
+
+    // let the framework handle content-type and streaming
+    return response()->file($publicPath);
+});
+
 Route::get('/public/musdesus/files', function () {
     try {
         $files = \App\Models\Musdesus::with(['desa', 'kecamatan'])
@@ -231,6 +250,46 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 
 
+// Public testing endpoints for kelembagaan (temporary)
+Route::get('/desa/kelembagaan/summary', function () {
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'rt' => 12,
+            'rw' => 8,
+            'posyandu' => 5,
+            'karang_taruna' => 1,
+            'lpm' => 1,
+            'pkk' => 1,
+            'satlinmas' => 1,
+            'karang_taruna_formed' => true,
+            'lpm_formed' => true,
+            'satlinmas_formed' => true,
+            'pkk_formed' => true,
+            'total' => 29
+        ]
+    ]);
+});
+
+Route::get('/desa/satlinmas', function () {
+    return response()->json([
+        'success' => true,
+        'data' => [
+            [
+                'id' => 1,
+                'nama_ketua' => 'Budi Santoso',
+                'jabatan' => 'Ketua Satlinmas',
+                'alamat' => 'RT 01/RW 01',
+                'no_hp' => '081234567890',
+                'status_kelembagaan' => 'aktif',
+                'tanggal_dibentuk' => '2024-01-15',
+                'created_at' => '2024-01-15T10:30:00.000000Z',
+                'updated_at' => '2024-01-15T10:30:00.000000Z'
+            ]
+        ]
+    ]);
+});
+
 // Routes untuk data referensi Kecamatan dan Desa (tanpa autentikasi untuk BUMDES form)
 Route::get('/kecamatans', function () {
     return response()->json(['data' => Kecamatan::all(['id', 'kode', 'nama'])]);
@@ -252,6 +311,83 @@ Route::middleware(['auth:sanctum', 'role:desa'])->prefix('desa')->group(function
     Route::put('/produk-hukum/status/{id}', [ProdukHukumController::class, 'updateStatus']);
     Route::apiResource('/aparatur-desa', AparaturDesaController::class);
     Route::post('/aparatur-desa/{id}', [AparaturDesaController::class, 'update']);
+    
+    // Temporary dummy endpoints for kelembagaan - return mock data
+    Route::get('/kelembagaan/summary', function () {
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'rt' => 12,
+                'rw' => 8,
+                'posyandu' => 5,
+                'karang_taruna' => 1,
+                'lpm' => 1,
+                'pkk' => 1,
+                'satlinmas' => 1,
+                'karang_taruna_formed' => true,
+                'lpm_formed' => true,
+                'satlinmas_formed' => true,
+                'pkk_formed' => true,
+                'total' => 29
+            ]
+        ]);
+    });
+    
+    Route::get('/kelembagaan/detailed-summary', function () {
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'rt_list' => [],
+                'rw_list' => [],
+                'posyandu_list' => [],
+                'karang_taruna' => null,
+                'lpm' => null,
+                'pkk' => null,
+                'satlinmas' => null,
+                'counts' => [
+                    'rt' => 12,
+                    'rw' => 8,
+                    'posyandu' => 5,
+                    'karang_taruna' => 1,
+                    'lpm' => 1,
+                    'pkk' => 1,
+                    'satlinmas' => 1
+                ]
+            ]
+        ]);
+    });
+    
+    // Temporary dummy endpoints for satlinmas
+    Route::get('/satlinmas', function () {
+        return response()->json([
+            'success' => true,
+            'data' => [
+                [
+                    'id' => 1,
+                    'nama_ketua' => 'Budi Santoso',
+                    'jabatan' => 'Ketua Satlinmas',
+                    'alamat' => 'RT 01/RW 01',
+                    'no_hp' => '081234567890',
+                    'status_kelembagaan' => 'aktif',
+                    'tanggal_dibentuk' => '2024-01-15',
+                    'created_at' => '2024-01-15T10:30:00.000000Z',
+                    'updated_at' => '2024-01-15T10:30:00.000000Z'
+                ]
+            ]
+        ]);
+    });
+    
+    Route::post('/satlinmas', function () {
+        return response()->json([
+            'success' => true,
+            'message' => 'Data satlinmas berhasil disimpan',
+            'data' => [
+                'id' => rand(1, 1000),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]
+        ], 201);
+    });
 });
 
 // Routes untuk Musdesus (Public - tidak perlu auth)
