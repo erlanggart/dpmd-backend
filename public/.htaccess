@@ -23,3 +23,19 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+
+# BUMDES File Access
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirect file access ke Laravel route
+    RewriteRule ^uploads/(.*)$ api/bumdes/file/$1 [L]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
