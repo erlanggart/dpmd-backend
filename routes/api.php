@@ -23,7 +23,6 @@ use App\Http\Controllers\Api\Desa\PkkController;
 use App\Http\Controllers\Api\Desa\KelembagaanController;
 use App\Http\Controllers\Api\MusdesusMonitoringController;
 use App\Http\Controllers\Api\KelembagaanController as GlobalKelembagaanController;
-use App\Http\Controllers\DesaController;
 
 use App\Http\Controllers\Api\BumdesController;
 use App\Http\Controllers\Api\Perjadin\KegiatanController as PerjadinKegiatanController;
@@ -31,6 +30,7 @@ use App\Http\Controllers\Api\Perjadin\DashboardController as PerjadinDashboardCo
 use App\Http\Controllers\Api\Perjadin\BidangController as PerjadinBidangController;
 use App\Http\Controllers\Api\Perjadin\PersonilController as PerjadinPersonilController;
 use App\Http\Controllers\Api\Perjadin\StatistikController as PerjadinStatistikController;
+use App\Http\Controllers\DesaController;
 use App\Models\Kecamatan;
 use App\Models\Desa;
 
@@ -104,11 +104,7 @@ Route::get('/produk-hukum/{produkHukum}', [ProdukHukumController::class, 'show']
 
 Route::get('/products', [ProductController::class, 'index']);
 
-// Test endpoint
-Route::post('/test-endpoint', function(Request $request) {
-    file_put_contents('test_endpoint.log', 'Test endpoint called - ' . date('Y-m-d H:i:s') . ' - ' . json_encode($request->all()) . PHP_EOL, FILE_APPEND);
-    return response()->json(['status' => 'success', 'data' => $request->all()]);
-});
+
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/login/bidang', [AuthController::class, 'loginBidang']);
@@ -253,12 +249,14 @@ Route::middleware(['auth:sanctum'])->get('/me', function (Request $request) {
     return response()->json(['user' => $request->user()]);
 });
 
-// Routes untuk Bumdes (tanpa autentikasi untuk testing)
+// Routes untuk Bumdes
 // Specific routes harus didefinisikan sebelum resource routes
 Route::get('/bumdes/search', [BumdesController::class, 'search']);
 Route::get('/bumdes/statistics', [BumdesController::class, 'statistics']);
 Route::get('/bumdes/dokumen-badan-hukum', [BumdesController::class, 'getDokumenBadanHukum']);
+Route::get('/bumdes/dokumen-badan-hukum-fast', [BumdesController::class, 'getDokumenBadanHukumFast']);
 Route::get('/bumdes/laporan-keuangan', [BumdesController::class, 'getLaporanKeuangan']);
+Route::get('/bumdes/laporan-keuangan-fast', [BumdesController::class, 'getLaporanKeuanganFast']);
 Route::delete('/bumdes/delete-file', [BumdesController::class, 'deleteFile']);
 
 // Route untuk serve file dari storage
@@ -316,35 +314,14 @@ Route::get('/desas/by-kecamatan/{kecamatan_id}', function ($kecamatan_id) {
     return response()->json(['data' => Desa::where('kecamatan_id', $kecamatan_id)->get(['id', 'kode', 'nama'])]);
 });
 
-Route::get('/test-storage', function () {
-    $path = storage_path('app/public/test-folder');
 
-    echo "Mencoba membuat direktori di: " . $path . "<br>";
-
-    try {
-        // Coba buat direktori
-        if (!File::exists($path)) {
-            File::makeDirectory($path, 0775, true, true);
-            echo "STATUS: Berhasil membuat folder.<br>";
-        } else {
-            echo "STATUS: Folder sudah ada.<br>";
-        }
-
-        // Coba tulis file
-        $file_path = $path . '/test.txt';
-        File::put($file_path, 'Tes tulis file berhasil pada ' . now());
-        echo "STATUS: Berhasil menulis file di: " . $file_path . "<br>";
-
-        return "KESIMPULAN: Izin akses tulis (write permission) BERFUNGSI.";
-    } catch (\Exception $e) {
-        // Jika gagal, tampilkan pesan error yang sebenarnya
-        return "KESIMPULAN: GAGAL. Pesan Error: " . $e->getMessage();
-    }
-});
 
 Route::middleware(['auth:sanctum', 'role:desa|superadmin'])->prefix('desa')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::apiResource('/profil-desa', ProfilDesaController::class)->only(['index', 'store']);
+    Route::apiResource('/produk-hukum', ProdukHukumController::class);
+    Route::post('/produk-hukum/{id}', [ProdukHukumController::class, 'update']);
+    Route::put('/produk-hukum/status/{id}', [ProdukHukumController::class, 'updateStatus']);
     Route::apiResource('/aparatur-desa', AparaturDesaController::class);
     Route::post('/aparatur-desa/{id}', [AparaturDesaController::class, 'update']);
 

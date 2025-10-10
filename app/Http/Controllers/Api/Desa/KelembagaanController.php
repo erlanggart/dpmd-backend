@@ -3,9 +3,7 @@
 namespace App\Http\Controllers\Api\Desa;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+
 use App\Models\Rt;
 use App\Models\Rw;
 use App\Models\Posyandu;
@@ -13,6 +11,8 @@ use App\Models\KarangTaruna;
 use App\Models\Lpm;
 use App\Models\Satlinmas;
 use App\Models\Pkk;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class KelembagaanController extends Controller
 {
