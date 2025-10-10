@@ -89,11 +89,11 @@ class BumdesController extends Controller
         $encodedFilename = str_replace(' ', '%20', $filename);
         
         if (config('app.env') === 'production') {
-            // Production: Use new API file route
-            return 'https://dpmdbogorkab.id/api/bumdes/file/' . $folder . '/' . $encodedFilename;
+            // Production: Use correct production URL pattern
+            return 'https://dpmdbogorkab.id/api/uploads/' . $folder . '/' . $encodedFilename;
         } else {
-            // Development: Use new API file route
-            return config('app.url') . '/api/bumdes/file/' . $folder . '/' . $encodedFilename;
+            // Development: Use development URL pattern
+            return config('app.url') . '/api/uploads/' . $folder . '/' . $encodedFilename;
         }
     }
 

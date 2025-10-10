@@ -35,6 +35,7 @@ use App\Models\Kecamatan;
 use App\Models\Desa;
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 
 Route::middleware(['auth:sanctum', 'role:superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa'])->group(function () {
     Route::get('/users', [UserController::class, 'index']);
@@ -264,16 +265,156 @@ Route::get('/bumdes/file/{folder}/{filename}', function($folder, $filename) {
     $allowedFolders = ['dokumen_badanhukum', 'laporan_keuangan'];
     
     if (!in_array($folder, $allowedFolders)) {
+        abort(404, 'Folder tidak diizinkan');
+    }
+    
+    // Decode filename untuk menangani URL encoding
+    $filename = urldecode($filename);
+    
+    // Log untuk debugging production
+    Log::info("BUMDES File Request", [
+        'folder' => $folder,
+        'filename' => $filename,
+        'url' => request()->fullUrl()
+    ]);
+    
+    // Cek di storage path terlebih dahulu (lokasi utama)
+    $storagePath = storage_path("app/uploads/{$folder}/{$filename}");
+    Log::info("Checking storage path", ['path' => $storagePath, 'exists' => file_exists($storagePath)]);
+    
+    if (file_exists($storagePath) && is_readable($storagePath)) {
+        $mimeType = mime_content_type($storagePath) ?: 'application/octet-stream';
+        
+        Log::info("Serving file from storage", ['mime' => $mimeType, 'size' => filesize($storagePath)]);
+        
+        return response()->file($storagePath, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . basename($filename) . '"',
+            'Cache-Control' => 'public, max-age=3600',
+            'Access-Control-Allow-Origin' => '*'
+        ]);
+    }
+    
+    // Fallback ke public path jika ada
+    $publicPath = public_path("uploads/{$folder}/{$filename}");
+    Log::info("Checking public path", ['path' => $publicPath, 'exists' => file_exists($publicPath)]);
+    
+    if (file_exists($publicPath) && is_readable($publicPath)) {
+        $mimeType = mime_content_type($publicPath) ?: 'application/octet-stream';
+        
+        Log::info("Serving file from public", ['mime' => $mimeType, 'size' => filesize($publicPath)]);
+        
+        return response()->file($publicPath, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . basename($filename) . '"',
+            'Cache-Control' => 'public, max-age=3600',
+            'Access-Control-Allow-Origin' => '*'
+        ]);
+    }
+    
+    // Log file not found untuk debugging
+    Log::warning("BUMDES File Not Found", [
+        'folder' => $folder,
+        'filename' => $filename,
+        'storage_path' => $storagePath,
+        'public_path' => $publicPath,
+        'storage_exists' => file_exists($storagePath),
+        'public_exists' => file_exists($publicPath)
+    ]);
+    
+    // Jika file tidak ditemukan, return 404 dengan pesan yang informatif
+    abort(404, "File tidak ditemukan: {$filename}");
+})->where('filename', '.*');
+
+// Route PRODUCTION untuk akses file BUMDES (jalur yang benar di production)
+Route::get('/uploads/{folder}/{filename}', function($folder, $filename) {
+    $allowedFolders = ['dokumen_badanhukum', 'laporan_keuangan'];
+    
+    if (!in_array($folder, $allowedFolders)) {
+        abort(404, 'Folder tidak diizinkan');
+    }
+    
+    // Decode filename untuk menangani URL encoding
+    $filename = urldecode($filename);
+    
+    // Log untuk debugging production
+    Log::info("BUMDES Production File Request", [
+        'folder' => $folder,
+        'filename' => $filename,
+        'url' => request()->fullUrl()
+    ]);
+    
+    // Cek di storage path terlebih dahulu (lokasi utama)
+    $storagePath = storage_path("app/uploads/{$folder}/{$filename}");
+    Log::info("Checking storage path", ['path' => $storagePath, 'exists' => file_exists($storagePath)]);
+    
+    if (file_exists($storagePath) && is_readable($storagePath)) {
+        $mimeType = mime_content_type($storagePath) ?: 'application/octet-stream';
+        
+        Log::info("Serving file from storage", ['mime' => $mimeType, 'size' => filesize($storagePath)]);
+        
+        return response()->file($storagePath, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . basename($filename) . '"',
+            'Cache-Control' => 'public, max-age=3600',
+            'Access-Control-Allow-Origin' => '*'
+        ]);
+    }
+    
+    // Fallback ke public path jika ada
+    $publicPath = public_path("uploads/{$folder}/{$filename}");
+    Log::info("Checking public path", ['path' => $publicPath, 'exists' => file_exists($publicPath)]);
+    
+    if (file_exists($publicPath) && is_readable($publicPath)) {
+        $mimeType = mime_content_type($publicPath) ?: 'application/octet-stream';
+        
+        Log::info("Serving file from public", ['mime' => $mimeType, 'size' => filesize($publicPath)]);
+        
+        return response()->file($publicPath, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . basename($filename) . '"',
+            'Cache-Control' => 'public, max-age=3600',
+            'Access-Control-Allow-Origin' => '*'
+        ]);
+    }
+    
+    // Log file not found untuk debugging
+    Log::warning("BUMDES Production File Not Found", [
+        'folder' => $folder,
+        'filename' => $filename,
+        'storage_path' => $storagePath,
+        'public_path' => $publicPath,
+        'storage_exists' => file_exists($storagePath),
+        'public_exists' => file_exists($publicPath)
+    ]);
+    
+    // Jika file tidak ditemukan, return 404 dengan pesan yang informatif
+    abort(404, "File tidak ditemukan: {$filename}");
+})->where('filename', '.*');
+
+// Route alternatif untuk backward compatibility
+Route::get('/public/uploads/{folder}/{filename}', function($folder, $filename) {
+    $allowedFolders = ['dokumen_badanhukum', 'laporan_keuangan'];
+    
+    if (!in_array($folder, $allowedFolders)) {
         abort(404);
     }
     
-    $filePath = storage_path("app/uploads/{$folder}/{$filename}");
+    // Decode filename
+    $filename = urldecode($filename);
     
-    if (!file_exists($filePath)) {
-        abort(404);
+    // Try storage first, then public
+    $storagePath = storage_path("app/uploads/{$folder}/{$filename}");
+    if (file_exists($storagePath)) {
+        return response()->file($storagePath);
     }
     
-    return response()->file($filePath);
+    $publicPath = public_path("uploads/{$folder}/{$filename}");
+    if (file_exists($publicPath)) {
+        return response()->file($publicPath);
+    }
+    
+    abort(404);
 })->where('filename', '.*');
 Route::apiResource('/bumdes', BumdesController::class);
 Route::post('/login/desa', [BumdesController::class, 'loginByDesa']);
