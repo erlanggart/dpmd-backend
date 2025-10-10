@@ -64,7 +64,7 @@ class ProdukHukumController extends Controller
             'subjek' => 'nullable|string|max:255',
             'status_peraturan' => 'required|in:berlaku,dicabut',
             'keterangan_status' => 'nullable|string|max:255',
-            'file' => 'required|mimes:pdf|max:2048',
+            'file' => 'required|mimes:pdf|max:10240',
         ]);
 
         if ($validator->fails()) {
@@ -159,7 +159,7 @@ class ProdukHukumController extends Controller
         if ($request->hasFile('file')) {
             // Validasi file secara terpisah
             $fileValidator = Validator::make($request->all(), [
-                'file' => 'required|mimes:pdf|max:2048',
+                'file' => 'required|mimes:pdf|max:10240',
             ]);
 
             if ($fileValidator->fails()) {
