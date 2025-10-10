@@ -103,6 +103,9 @@ Route::middleware(['auth:sanctum', 'role:desa|superadmin|sekretariat|sarana_pras
 Route::get('/produk-hukum/{produkHukum}', [ProdukHukumController::class, 'show']);
 
 Route::get('/products', [ProductController::class, 'index']);
+
+
+
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/login/bidang', [AuthController::class, 'loginBidang']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
@@ -246,9 +249,33 @@ Route::middleware(['auth:sanctum'])->get('/me', function (Request $request) {
     return response()->json(['user' => $request->user()]);
 });
 
-// Routes untuk Bumdes (tanpa autentikasi untuk testing)
-Route::apiResource('/bumdes', BumdesController::class);
+// Routes untuk Bumdes
+// Specific routes harus didefinisikan sebelum resource routes
 Route::get('/bumdes/search', [BumdesController::class, 'search']);
+Route::get('/bumdes/statistics', [BumdesController::class, 'statistics']);
+Route::get('/bumdes/dokumen-badan-hukum', [BumdesController::class, 'getDokumenBadanHukum']);
+Route::get('/bumdes/dokumen-badan-hukum-fast', [BumdesController::class, 'getDokumenBadanHukumFast']);
+Route::get('/bumdes/laporan-keuangan', [BumdesController::class, 'getLaporanKeuangan']);
+Route::get('/bumdes/laporan-keuangan-fast', [BumdesController::class, 'getLaporanKeuanganFast']);
+Route::delete('/bumdes/delete-file', [BumdesController::class, 'deleteFile']);
+
+// Route untuk serve file dari storage
+Route::get('/bumdes/file/{folder}/{filename}', function($folder, $filename) {
+    $allowedFolders = ['dokumen_badanhukum', 'laporan_keuangan'];
+    
+    if (!in_array($folder, $allowedFolders)) {
+        abort(404);
+    }
+    
+    $filePath = storage_path("app/uploads/{$folder}/{$filename}");
+    
+    if (!file_exists($filePath)) {
+        abort(404);
+    }
+    
+    return response()->file($filePath);
+})->where('filename', '.*');
+Route::apiResource('/bumdes', BumdesController::class);
 Route::post('/login/desa', [BumdesController::class, 'loginByDesa']);
 Route::get('/identitas-bumdes', [BumdesController::class, 'index']); // Untuk mendapatkan data identitas
 
@@ -287,31 +314,7 @@ Route::get('/desas/by-kecamatan/{kecamatan_id}', function ($kecamatan_id) {
     return response()->json(['data' => Desa::where('kecamatan_id', $kecamatan_id)->get(['id', 'kode', 'nama'])]);
 });
 
-Route::get('/test-storage', function () {
-    $path = storage_path('app/public/test-folder');
 
-    echo "Mencoba membuat direktori di: " . $path . "<br>";
-
-    try {
-        // Coba buat direktori
-        if (!File::exists($path)) {
-            File::makeDirectory($path, 0775, true, true);
-            echo "STATUS: Berhasil membuat folder.<br>";
-        } else {
-            echo "STATUS: Folder sudah ada.<br>";
-        }
-
-        // Coba tulis file
-        $file_path = $path . '/test.txt';
-        File::put($file_path, 'Tes tulis file berhasil pada ' . now());
-        echo "STATUS: Berhasil menulis file di: " . $file_path . "<br>";
-
-        return "KESIMPULAN: Izin akses tulis (write permission) BERFUNGSI.";
-    } catch (\Exception $e) {
-        // Jika gagal, tampilkan pesan error yang sebenarnya
-        return "KESIMPULAN: GAGAL. Pesan Error: " . $e->getMessage();
-    }
-});
 
 Route::middleware(['auth:sanctum', 'role:desa|superadmin'])->prefix('desa')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
