@@ -8,8 +8,8 @@ use App\Models\Perjadin\Kegiatan;
 use App\Models\Perjadin\KegiatanBidang;
 use App\Services\KegiatanService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -68,14 +68,81 @@ class KegiatanController extends Controller
 
     public function show($id)
     {
-        $kegiatan = Kegiatan::with('details.bidang')
-            ->find($id);
+        try {
+            $kegiatan = Kegiatan::with(['details.bidang'])
+                ->find($id);
 
-        if (!$kegiatan) {
-            return response()->json(['success' => false, 'message' => 'Kegiatan tidak ditemukan.'], 404);
+            if (!$kegiatan) {
+                return response()->json(['success' => false, 'message' => 'Kegiatan tidak ditemukan.'], 404);
+            }
+
+            // Format data untuk frontend
+            $formattedKegiatan = [
+                'id_kegiatan' => $kegiatan->id_kegiatan,
+                'nama_kegiatan' => $kegiatan->nama_kegiatan,
+                'nomor_surat' => $kegiatan->nomor_sp,
+                'tanggal_kegiatan' => $kegiatan->tanggal_mulai . ' - ' . $kegiatan->tanggal_selesai,
+                'tanggal_mulai' => $kegiatan->tanggal_mulai,
+                'tanggal_selesai' => $kegiatan->tanggal_selesai,
+                'lokasi' => $kegiatan->lokasi,
+                'keterangan' => $kegiatan->keterangan,
+                'status' => 'approved',
+                'total_anggaran' => null,
+                'bidang' => [],
+                'personil' => []
+            ];
+
+            // Format bidang dan personil
+            if ($kegiatan->details) {
+                foreach ($kegiatan->details as $detail) {
+                    // Add bidang info
+                    if ($detail->bidang) {
+                        $formattedKegiatan['bidang'][] = [
+                            'id_bidang' => $detail->bidang->id ?? null,
+                            'nama_bidang' => $detail->bidang->nama_bidang ?? 'Tidak diketahui',
+                            'status' => 'aktif'
+                        ];
+                    }
+
+                    // Add personil info
+                    if (!empty($detail->personil)) {
+                        $personilData = null;
+                        
+                        // Try to decode if it's JSON string
+                        if (is_string($detail->personil)) {
+                            $personilData = json_decode($detail->personil, true);
+                        } elseif (is_array($detail->personil)) {
+                            $personilData = $detail->personil;
+                        }
+                        
+                        if (is_array($personilData)) {
+                            foreach ($personilData as $person) {
+                                if (is_array($person)) {
+                                    $formattedKegiatan['personil'][] = [
+                                        'nama' => $person['nama'] ?? 'Tidak diketahui',
+                                        'jabatan' => $person['jabatan'] ?? 'Tidak diketahui',
+                                        'nip' => $person['nip'] ?? '-',
+                                        'golongan' => $person['golongan'] ?? '-',
+                                        'status' => 'active',
+                                        'bidang' => $detail->bidang ? $detail->bidang->nama_bidang : 'Tidak diketahui'
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return response()->json(['success' => true, 'data' => $formattedKegiatan]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error in KegiatanController@show: ' . $e->getMessage());
+            return response()->json([
+                'success' => false, 
+                'message' => 'Terjadi kesalahan saat mengambil data kegiatan.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json(['success' => true, 'data' => $kegiatan]);
     }
 
     public function store(Request $request)
