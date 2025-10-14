@@ -108,9 +108,11 @@ class BumdesController extends Controller
     private function uploadFile(Request $request, string $fileKey, ?string $currentFilePath = null): ?string
     {
         if ($request->hasFile($fileKey)) {
+            Log::info("BUMDES Upload Debug: Processing file for key: $fileKey");
+            
             // Hapus berkas lama jika ada
-            if ($currentFilePath && Storage::disk('public')->exists($currentFilePath)) {
-                Storage::disk('public')->delete($currentFilePath);
+            if ($currentFilePath && Storage::exists('uploads/' . dirname($currentFilePath) . '/' . basename($currentFilePath))) {
+                Storage::delete('uploads/' . dirname($currentFilePath) . '/' . basename($currentFilePath));
             }
             
             // Determine folder based on file type
@@ -124,22 +126,27 @@ class BumdesController extends Controller
                 $folder = 'dokumen_badanhukum';
             }
             
-            // Save to public/uploads/{folder} instead of storage/app/public
+            Log::info("BUMDES Upload Debug: File $fileKey will be saved to folder: $folder");
+            
+            // Save to storage/app/uploads/{folder}
             $file = $request->file($fileKey);
             $filename = time() . '_' . $file->getClientOriginalName();
             
-            // Create directory if it doesn't exist
-            $uploadPath = public_path('uploads/' . $folder);
-            if (!file_exists($uploadPath)) {
-                mkdir($uploadPath, 0755, true);
-            }
+            // Store file using Laravel Storage (storage/app/uploads/{folder})
+            $storagePath = "uploads/{$folder}";
+            $path = $file->storeAs($storagePath, $filename);
             
-            // Move file to public/uploads/{folder}
-            $file->move($uploadPath, $filename);
+            if ($path) {
+                Log::info("BUMDES Upload Debug: File successfully saved to: storage/app/$path");
+            } else {
+                Log::error("BUMDES Upload Debug: Failed to save file to: storage/app/$storagePath/$filename");
+            }
             
             // Return just the filename (not the full path)
             return $filename;
         }
+        
+        Log::info("BUMDES Upload Debug: No file found for key: $fileKey");
         return $currentFilePath;
     }
 
