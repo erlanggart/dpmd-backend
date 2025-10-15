@@ -672,6 +672,88 @@ Route::middleware(['auth:sanctum', 'role:desa|superadmin'])->prefix('desa')->gro
     Route::apiResource('/pkk', PkkController::class)->except(['show']);
 });
 
+// Route untuk akses file musdesus dengan URL yang benar: /api/uploads/musdesus/filename
+Route::get('/uploads/musdesus/{filename}', function($filename) {
+    // Decode filename untuk menangani URL encoding
+    $filename = urldecode($filename);
+    
+    // Log untuk debugging production
+    Log::info("MUSDESUS File Request", [
+        'filename' => $filename,
+        'url' => request()->fullUrl(),
+        'ip' => request()->ip(),
+        'user_agent' => request()->header('User-Agent')
+    ]);
+    
+    // Cari file di database musdesus
+    $musdesus = \App\Models\Musdesus::where('nama_file', $filename)->first();
+    
+    if (!$musdesus) {
+        Log::warning("MUSDESUS File not found in database", ['filename' => $filename]);
+        abort(404, "File musdesus tidak ditemukan: {$filename}");
+    }
+    
+    // Daftar path yang mungkin untuk mencari file musdesus
+    $searchPaths = [
+        // PRIORITY 1: Production path yang benar
+        base_path('../public_html/api/uploads/musdesus/' . $filename),
+        
+        // PRIORITY 2: Alternative production paths
+        public_path('api/uploads/musdesus/' . $filename),
+        public_path('uploads/musdesus/' . $filename),
+        
+        // PRIORITY 3: Development paths
+        storage_path('app/public/musdesus/' . $filename),
+        
+        // PRIORITY 4: Storage disk path
+        \Illuminate\Support\Facades\Storage::disk('musdesus')->path($filename),
+        
+        // PRIORITY 5: Fallback paths
+        public_path('storage/musdesus/' . $filename),
+        storage_path('app/uploads/musdesus/' . $filename)
+    ];
+    
+    // Cari file di semua path
+    foreach ($searchPaths as $index => $filePath) {
+        $exists = file_exists($filePath);
+        $readable = $exists ? is_readable($filePath) : false;
+        
+        Log::info("MUSDESUS Checking path " . ($index + 1), [
+            'path' => $filePath,
+            'exists' => $exists,
+            'readable' => $readable,
+            'size' => $exists ? filesize($filePath) : 0
+        ]);
+        
+        if ($exists && $readable) {
+            $mimeType = mime_content_type($filePath) ?: 'application/octet-stream';
+            
+            Log::info("MUSDESUS Serving file", [
+                'path' => $filePath,
+                'mime' => $mimeType,
+                'size' => filesize($filePath),
+                'original_name' => $musdesus->nama_file_asli
+            ]);
+            
+            return response()->file($filePath, [
+                'Content-Type' => $mimeType,
+                'Content-Disposition' => 'inline; filename="' . $musdesus->nama_file_asli . '"',
+                'Cache-Control' => 'public, max-age=3600',
+                'Access-Control-Allow-Origin' => '*'
+            ]);
+        }
+    }
+    
+    // Log jika file tidak ditemukan di semua path
+    Log::error("MUSDESUS File not found in any path", [
+        'filename' => $filename,
+        'searched_paths' => $searchPaths,
+        'database_record' => $musdesus->toArray()
+    ]);
+    
+    abort(404, "File musdesus tidak dapat diakses: {$filename}");
+})->where('filename', '.*');
+
 // Routes untuk Musdesus (Public - tidak perlu auth)
 Route::prefix('musdesus')->group(function () {
     Route::get('/kecamatan', [App\Http\Controllers\Api\MusdesusController::class, 'getKecamatan']);
@@ -679,6 +761,7 @@ Route::prefix('musdesus')->group(function () {
     Route::get('/check-desa/{desa_id}', [App\Http\Controllers\Api\MusdesusController::class, 'checkDesaUploadStatus']);
     Route::post('/upload', [App\Http\Controllers\Api\MusdesusController::class, 'store']);
     Route::get('/download/{id}', [App\Http\Controllers\Api\MusdesusController::class, 'download']);
+    Route::get('/view/{filename}', [App\Http\Controllers\Api\MusdesusController::class, 'viewFile'])->where('filename', '.*');
 });
 
 // Routes untuk admin musdesus (perlu auth)
