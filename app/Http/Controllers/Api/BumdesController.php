@@ -146,11 +146,9 @@ class BumdesController extends Controller
     private function uploadFile(Request $request, string $fileKey, ?string $currentFilePath = null): ?string
     {
         if ($request->hasFile($fileKey)) {
-            Log::info("BUMDES Upload Debug: Processing file for key: $fileKey");
-            
             // Hapus berkas lama jika ada
-            if ($currentFilePath && Storage::exists('uploads/' . dirname($currentFilePath) . '/' . basename($currentFilePath))) {
-                Storage::delete('uploads/' . dirname($currentFilePath) . '/' . basename($currentFilePath));
+            if ($currentFilePath && Storage::exists('uploads/' . $currentFilePath)) {
+                Storage::delete('uploads/' . $currentFilePath);
             }
             
             // Determine folder based on file type
@@ -159,12 +157,10 @@ class BumdesController extends Controller
             $dokumenBadanHukumFields = ['Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 'AnggaranRumahTangga', 'ProgramKerja', 'SK_BUM_Desa'];
             
             if (in_array($fileKey, $laporanKeuanganFields)) {
-                $folder = 'laporan_keuangan';
+                $folder = 'bumdes_laporan_keuangan';
             } elseif (in_array($fileKey, $dokumenBadanHukumFields)) {
-                $folder = 'dokumen_badanhukum';
+                $folder = 'bumdes_dokumen_badanhukum';
             }
-            
-            Log::info("BUMDES Upload Debug: File $fileKey will be saved to folder: $folder");
             
             // Save to storage/app/uploads/{folder}
             $file = $request->file($fileKey);
@@ -175,16 +171,14 @@ class BumdesController extends Controller
             $path = $file->storeAs($storagePath, $filename);
             
             if ($path) {
-                Log::info("BUMDES Upload Debug: File successfully saved to: storage/app/$path");
+                // Return relative path from uploads folder
+                $relativePath = "{$folder}/{$filename}";
+                return $relativePath;
             } else {
-                Log::error("BUMDES Upload Debug: Failed to save file to: storage/app/$storagePath/$filename");
+                return null;
             }
-            
-            // Return just the filename (not the full path)
-            return $filename;
         }
         
-        Log::info("BUMDES Upload Debug: No file found for key: $fileKey");
         return $currentFilePath;
     }
 
@@ -288,13 +282,22 @@ class BumdesController extends Controller
                 'SK_BUM_Desa' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
             ]);
 
-            $bumdes = Bumdes::create($validatedData);
-
+            // Pisahkan data file dan non-file
+            $dataToSave = [];
             $fileFields = [
                 'LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024',
                 'Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 'AnggaranRumahTangga',
                 'ProgramKerja', 'SK_BUM_Desa'
             ];
+            
+            // Ambil hanya data non-file untuk create
+            foreach ($validatedData as $key => $value) {
+                if (!in_array($key, $fileFields)) {
+                    $dataToSave[$key] = $value;
+                }
+            }
+
+            $bumdes = Bumdes::create($dataToSave);
 
             foreach ($fileFields as $field) {
                 if ($request->hasFile($field)) {
@@ -304,6 +307,7 @@ class BumdesController extends Controller
                     }
                 }
             }
+            
             $bumdes->save();
             
             // Clear cache setelah data berubah
@@ -820,8 +824,12 @@ class BumdesController extends Controller
                 // Extract filename from database value
                 $extractedFilename = null;
                 
-                // Method 1: If contains folder path (dokumen_badanhukum/filename or laporan_keuangan/filename)
-                if (strpos($dbValue, 'dokumen_badanhukum/') === 0) {
+                // Method 1: If contains folder path (support both old and new naming convention)
+                if (strpos($dbValue, 'bumdes_dokumen_badanhukum/') === 0) {
+                    $extractedFilename = substr($dbValue, strlen('bumdes_dokumen_badanhukum/'));
+                } elseif (strpos($dbValue, 'bumdes_laporan_keuangan/') === 0) {
+                    $extractedFilename = substr($dbValue, strlen('bumdes_laporan_keuangan/'));
+                } elseif (strpos($dbValue, 'dokumen_badanhukum/') === 0) {
                     $extractedFilename = substr($dbValue, strlen('dokumen_badanhukum/'));
                 } elseif (strpos($dbValue, 'laporan_keuangan/') === 0) {
                     $extractedFilename = substr($dbValue, strlen('laporan_keuangan/'));

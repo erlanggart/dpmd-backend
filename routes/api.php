@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
@@ -585,7 +586,53 @@ Route::get('/public/uploads/{folder}/{filename}', function($folder, $filename) {
     abort(404);
 })->where('filename', '.*');
 
-Route::apiResource('/bumdes', BumdesController::class);
+// SPECIAL ENDPOINT untuk upload file BUMDes - VERY SIMPLE, NO DEPENDENCY
+Route::post('/bumdes-upload-file', function(Request $request) {
+    try {
+        $bumdesId = $request->input('bumdes_id');
+        $fieldName = $request->input('field_name');
+        
+        if (!$request->hasFile('file')) {
+            return response()->json(['error' => 'No file uploaded'], 400);
+        }
+        
+        $file = $request->file('file');
+        $filename = time() . '_' . $file->getClientOriginalName();
+        
+        // Tentukan folder
+        $folder = in_array($fieldName, ['LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024']) 
+            ? 'bumdes_laporan_keuangan' 
+            : 'bumdes_dokumen_badanhukum';
+        
+        // Simpan file
+        $storagePath = storage_path("app/uploads/{$folder}");
+        if (!file_exists($storagePath)) {
+            mkdir($storagePath, 0755, true);
+        }
+        
+        $file->move($storagePath, $filename);
+        
+        // Update database
+        $relativePath = "{$folder}/{$filename}";
+        DB::table('bumdes')->where('id', $bumdesId)->update([
+            $fieldName => $relativePath
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'path' => $relativePath,
+            'filename' => $filename
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
+// EXPLICIT POST route untuk bumdes store - HARUS DI ATAS apiResource
+Route::post('/bumdes', [BumdesController::class, 'store'])->name('bumdes.store.explicit');
+
+Route::apiResource('/bumdes', BumdesController::class)->except(['store']);
 Route::post('/login/desa', [BumdesController::class, 'loginByDesa']);
 Route::get('/identitas-bumdes', [BumdesController::class, 'index']); // Untuk mendapatkan data identitas
 
