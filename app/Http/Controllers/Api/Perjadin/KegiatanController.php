@@ -76,6 +76,8 @@ class KegiatanController extends Controller
                 return response()->json(['success' => false, 'message' => 'Kegiatan tidak ditemukan.'], 404);
             }
 
+
+
             // Format data untuk frontend
             $formattedKegiatan = [
                 'id_kegiatan' => $kegiatan->id_kegiatan,
@@ -87,44 +89,94 @@ class KegiatanController extends Controller
                 'lokasi' => $kegiatan->lokasi,
                 'keterangan' => $kegiatan->keterangan,
                 'status' => 'approved',
-                'total_anggaran' => null,
                 'bidang' => [],
                 'personil' => []
             ];
 
             // Format bidang dan personil
+            $addedBidangs = []; // Track added bidangs to avoid duplicates
+            
             if ($kegiatan->details) {
                 foreach ($kegiatan->details as $detail) {
-                    // Add bidang info
-                    if ($detail->bidang) {
+                    // Add bidang info (avoid duplicates)
+                    if ($detail->bidang && !in_array($detail->bidang->id, $addedBidangs)) {
                         $formattedKegiatan['bidang'][] = [
                             'id_bidang' => $detail->bidang->id ?? null,
-                            'nama_bidang' => $detail->bidang->nama_bidang ?? 'Tidak diketahui',
+                            'nama_bidang' => $detail->bidang->nama ?? 'Tidak diketahui',
                             'status' => 'aktif'
                         ];
+                        $addedBidangs[] = $detail->bidang->id;
                     }
 
-                    // Add personil info
+                    // Add personil info - handle both comma-separated and JSON formats
                     if (!empty($detail->personil)) {
+
+                        
                         $personilData = null;
                         
-                        // Try to decode if it's JSON string
+                        // Check if it's JSON string
                         if (is_string($detail->personil)) {
-                            $personilData = json_decode($detail->personil, true);
+                            $jsonDecoded = json_decode($detail->personil, true);
+                            if (json_last_error() === JSON_ERROR_NONE && is_array($jsonDecoded)) {
+                                // It's valid JSON
+                                $personilData = $jsonDecoded;
+                            } else {
+                                // Handle comma-separated personil data intelligently
+                                // Use regex to find patterns of "Name, Degree" and keep them together
+                                $personilString = $detail->personil;
+                                
+                                // First, try to identify complete name-degree patterns
+                                // Pattern: Any text followed by comma and space, then a degree pattern
+                                $degreePatterns = [
+                                    'S\.H\.', 'S\.E\.', 'M\.M', 'M\.Si', 'S\.STP', 'M\.IP', 'S\.AP', 
+                                    'A\.Md', 'S\.AK', 'S\.Psi', 'S\.I\.Kom', 'S\.Sos', 'MM', 'S\.Pd', 'S\.Kom',
+                                    'S\.P\.W\.K', 'S\.Tr\.I\.P\.', 'S\.Tr\.Sos', 'S\.M\.', 'S\.T\.', 'S\.IK',
+                                    'M\.PA', 'M\.A', 'S\.Ak\.', 'B\.M\.', 'M\.IP', 'S\.Tr\.', 'Drs\.',
+                                    'S\. E\.', 'S\. IP', 'S\. AP', 'S\. Md', 'S\. AK', 'S\. STP', 'S\. Ak',
+                                    'M\. Si', 'M\. M\.', 'M\. PA', 'S\. Kom', 'S\. Pd'
+                                ];
+                                
+                                $processedNames = [];
+                                
+                                // Replace pattern "Name, Degree" with "Name|Degree" temporarily to preserve
+                                foreach ($degreePatterns as $degree) {
+                                    $personilString = preg_replace('/([^,]+),\s*(' . $degree . ')/', '$1|$2', $personilString);
+                                }
+                                
+                                // Now split by comma to get individual entries
+                                $rawNames = array_map('trim', explode(',', $personilString));
+                                
+                                foreach ($rawNames as $name) {
+                                    $name = trim($name);
+                                    if (!empty($name)) {
+                                        // Restore the comma in degree if it was replaced
+                                        $name = str_replace('|', ', ', $name);
+                                        $processedNames[] = $name;
+                                    }
+                                }
+                                
+                                $personilData = array_map(function($name) {
+                                    return ['nama' => trim($name)];
+                                }, $processedNames);
+                            }
                         } elseif (is_array($detail->personil)) {
                             $personilData = $detail->personil;
                         }
                         
-                        if (is_array($personilData)) {
+                        if (is_array($personilData) && !empty($personilData)) {
                             foreach ($personilData as $person) {
                                 if (is_array($person)) {
+                                    // Ensure the full name with degrees/titles is preserved
+                                    $namaLengkap = $person['nama'] ?? 'Tidak diketahui';
                                     $formattedKegiatan['personil'][] = [
-                                        'nama' => $person['nama'] ?? 'Tidak diketahui',
-                                        'jabatan' => $person['jabatan'] ?? 'Tidak diketahui',
-                                        'nip' => $person['nip'] ?? '-',
-                                        'golongan' => $person['golongan'] ?? '-',
-                                        'status' => 'active',
-                                        'bidang' => $detail->bidang ? $detail->bidang->nama_bidang : 'Tidak diketahui'
+                                        'nama' => $namaLengkap,
+                                        'bidang' => $detail->bidang ? $detail->bidang->nama : 'Tidak diketahui'
+                                    ];
+                                } elseif (is_string($person)) {
+                                    // Handle simple string names - preserve full name with degrees/titles
+                                    $formattedKegiatan['personil'][] = [
+                                        'nama' => trim($person),
+                                        'bidang' => $detail->bidang ? $detail->bidang->nama : 'Tidak diketahui'
                                     ];
                                 }
                             }
@@ -132,6 +184,8 @@ class KegiatanController extends Controller
                     }
                 }
             }
+
+
 
             return response()->json(['success' => true, 'data' => $formattedKegiatan]);
             

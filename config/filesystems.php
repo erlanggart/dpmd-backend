@@ -62,7 +62,7 @@ return [
                 ? base_path('../public_html/api/uploads/musdesus')
                 : storage_path('app/public/musdesus'),
             'url' => env('APP_ENV') === 'production'
-                ? env('APP_URL') . '/api/uploads/musdesus'
+                ? 'https://dpmdbogorkab.id/api/uploads/musdesus'  // Fixed: hardcode URL yang benar
                 : env('APP_URL') . '/storage/musdesus',
             'visibility' => 'public',
             'throw' => false,
