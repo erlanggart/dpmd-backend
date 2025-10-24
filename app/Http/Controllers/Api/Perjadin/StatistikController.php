@@ -29,12 +29,46 @@ class StatistikController extends Controller
                 ->distinct('kegiatan_bidang.id_bidang')
                 ->count('kegiatan_bidang.id_bidang');
             
-            // Total personil yang terlibat berdasarkan tabel personil
-            $totalPersonil = KegiatanBidang::join('kegiatan', 'kegiatan_bidang.id_kegiatan', '=', 'kegiatan.id_kegiatan')
-                ->join('personil', 'kegiatan_bidang.id_bidang', '=', 'personil.id_bidang')
+            // Total personil yang terlibat berdasarkan data aktual di field personil
+            $kegiatanBidangData = KegiatanBidang::join('kegiatan', 'kegiatan_bidang.id_kegiatan', '=', 'kegiatan.id_kegiatan')
                 ->whereYear('kegiatan.tanggal_mulai', $year)
-                ->distinct('personil.id_personil')
-                ->count('personil.id_personil');
+                ->whereNotNull('kegiatan_bidang.personil')
+                ->where('kegiatan_bidang.personil', '!=', '')
+                ->pluck('kegiatan_bidang.personil');
+
+            // Hitung unique personil dari semua kegiatan
+            $uniquePersonil = [];
+            foreach ($kegiatanBidangData as $personilString) {
+                // Parse personil string (comma-separated atau JSON)
+                $personilList = [];
+                
+                // Coba decode JSON dulu
+                $jsonDecoded = json_decode($personilString, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($jsonDecoded)) {
+                    // Jika JSON valid, ambil nama dari setiap personil
+                    foreach ($jsonDecoded as $person) {
+                        if (is_array($person) && isset($person['nama'])) {
+                            $personilList[] = trim(strtolower($person['nama']));
+                        } elseif (is_string($person)) {
+                            $personilList[] = trim(strtolower($person));
+                        }
+                    }
+                } else {
+                    // Jika bukan JSON, split by comma
+                    $personilList = array_map(function($name) {
+                        return trim(strtolower($name));
+                    }, array_filter(explode(',', $personilString)));
+                }
+                
+                // Tambahkan ke unique list
+                foreach ($personilList as $personil) {
+                    if (!empty($personil)) {
+                        $uniquePersonil[$personil] = true;
+                    }
+                }
+            }
+            
+            $totalPersonil = count($uniquePersonil);
 
             // Generate grafik data berdasarkan periode
             $grafikData = $this->generateGrafikData($period, $year, $month);
@@ -53,16 +87,58 @@ class StatistikController extends Controller
                     return $item;
                 });
 
-            // Data personil terlibat per bidang
-            $personilPerBidang = KegiatanBidang::select('bidangs.nama as bidang', DB::raw('COUNT(DISTINCT personil.id_personil) as jumlah_personil'))
+            // Data personil terlibat per bidang berdasarkan data aktual
+            $bidangPersonilData = KegiatanBidang::select('bidangs.nama as bidang', 'kegiatan_bidang.personil')
                 ->join('bidangs', 'kegiatan_bidang.id_bidang', '=', 'bidangs.id')
                 ->join('kegiatan', 'kegiatan_bidang.id_kegiatan', '=', 'kegiatan.id_kegiatan')
-                ->join('personil', 'kegiatan_bidang.id_bidang', '=', 'personil.id_bidang')
                 ->whereYear('kegiatan.tanggal_mulai', $year)
-                ->groupBy('bidangs.id', 'bidangs.nama')
-                ->orderBy('jumlah_personil', 'desc')
-                ->limit(5)
-                ->get();
+                ->whereNotNull('kegiatan_bidang.personil')
+                ->where('kegiatan_bidang.personil', '!=', '')
+                ->get()
+                ->groupBy('bidang');
+
+            $personilPerBidang = [];
+            foreach ($bidangPersonilData as $bidangNama => $records) {
+                $uniquePersonilBidang = [];
+                
+                foreach ($records as $record) {
+                    $personilString = $record->personil;
+                    $personilList = [];
+                    
+                    // Parse personil string (sama seperti sebelumnya)
+                    $jsonDecoded = json_decode($personilString, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($jsonDecoded)) {
+                        foreach ($jsonDecoded as $person) {
+                            if (is_array($person) && isset($person['nama'])) {
+                                $personilList[] = trim(strtolower($person['nama']));
+                            } elseif (is_string($person)) {
+                                $personilList[] = trim(strtolower($person));
+                            }
+                        }
+                    } else {
+                        $personilList = array_map(function($name) {
+                            return trim(strtolower($name));
+                        }, array_filter(explode(',', $personilString)));
+                    }
+                    
+                    foreach ($personilList as $personil) {
+                        if (!empty($personil)) {
+                            $uniquePersonilBidang[$personil] = true;
+                        }
+                    }
+                }
+                
+                $personilPerBidang[] = (object)[
+                    'bidang' => $bidangNama,
+                    'jumlah_personil' => count($uniquePersonilBidang)
+                ];
+            }
+            
+            // Sort by jumlah_personil descending and take top 5
+            usort($personilPerBidang, function($a, $b) {
+                return $b->jumlah_personil - $a->jumlah_personil;
+            });
+            $personilPerBidang = array_slice($personilPerBidang, 0, 5);
 
             return response()->json([
                 'success' => true,

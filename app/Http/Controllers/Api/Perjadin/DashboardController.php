@@ -20,10 +20,25 @@ class DashboardController extends Controller
             $total = Kegiatan::count();
             $mingguan = Kegiatan::whereBetween('tanggal_mulai', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->count();
             $bulanan = Kegiatan::whereBetween('tanggal_mulai', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()])->count();
-            $per_bidang = KegiatanBidang::select('bidangs.id as id_bidang', 'bidangs.nama as nama_bidang', DB::raw('count(*) as total'))
+            
+            // Hanya ambil bidang yang memiliki kegiatan (menghindari "bidang kerja . 0 kegiatan")
+            $per_bidang = KegiatanBidang::select('bidangs.id as id_bidang', 'bidangs.nama as nama_bidang', DB::raw('count(DISTINCT kegiatan_bidang.id_kegiatan) as total'))
                 ->join('bidangs', 'kegiatan_bidang.id_bidang', '=', 'bidangs.id')
+                ->join('kegiatan', 'kegiatan_bidang.id_kegiatan', '=', 'kegiatan.id_kegiatan') // Join dengan kegiatan untuk memastikan kegiatan exists
                 ->groupBy('bidangs.id', 'bidangs.nama')
+                ->having('total', '>', 0) // Hanya tampilkan bidang yang memiliki kegiatan
+                ->orderBy('total', 'desc')
                 ->get();
+
+            // Hitung total personil yang terlibat berdasarkan data personil di kegiatan_bidang
+            $totalPersonilTerlibat = KegiatanBidang::whereNotNull('personil')
+                ->where('personil', '!=', '')
+                ->get()
+                ->sum(function($detail) {
+                    // Hitung jumlah personil dari string yang dipisah koma
+                    $personilList = array_filter(array_map('trim', explode(',', $detail->personil ?? '')));
+                    return count($personilList);
+                });
 
             return response()->json([
                 'success' => true,
@@ -31,6 +46,7 @@ class DashboardController extends Controller
                     'total' => $total,
                     'mingguan' => $mingguan,
                     'bulanan' => $bulanan,
+                    'total_personil_terlibat' => $totalPersonilTerlibat,
                     'per_bidang' => $per_bidang
                 ]
             ]);

@@ -15,6 +15,7 @@ class Bumdes extends Model
      * @var array
      */
     protected $fillable = [
+        'desa_id',
         'kode_desa',
         'kecamatan',
         'desa',
@@ -73,16 +74,44 @@ class Bumdes extends Model
         'BantuanLaptopShopee',
         'NomorPerdes',
         'DesaWisata',
-        'LaporanKeuangan2021',
-        'LaporanKeuangan2022',
-        'LaporanKeuangan2023',
-        'LaporanKeuangan2024',
-        'Perdes',
-        'ProfilBUMDesa',
-        'BeritaAcara',
-        'AnggaranDasar',
-        'AnggaranRumahTangga',
-        'ProgramKerja',
-        'SK_BUM_Desa',
+        // Foreign key fields for produk hukum integration
+        'produk_hukum_perdes_id',
+        'produk_hukum_sk_bumdes_id',
+        // FILE FIELDS REMOVED FROM FILLABLE - harus di-handle manual di controller
+        // 'LaporanKeuangan2021',
+        // 'LaporanKeuangan2022',
+        // 'LaporanKeuangan2023',
+        // 'LaporanKeuangan2024',
+        // 'Perdes',
+        // 'ProfilBUMDesa',
+        // 'BeritaAcara',
+        // 'AnggaranDasar',
+        // 'AnggaranRumahTangga',
+        // 'ProgramKerja',
+        // 'SK_BUM_Desa',
     ];
+
+    /**
+     * Get the desa that owns the Bumdes
+     */
+    public function desa()
+    {
+        return $this->belongsTo(Desa::class);
+    }
+
+    /**
+     * Get the PERDES (Peraturan Desa) produk hukum for this BUMDES
+     */
+    public function produkHukumPerdes()
+    {
+        return $this->belongsTo(\App\Models\ProdukHukum::class, 'produk_hukum_perdes_id');
+    }
+
+    /**
+     * Get the SK BUMDES produk hukum for this BUMDES
+     */
+    public function produkHukumSkBumdes()
+    {
+        return $this->belongsTo(\App\Models\ProdukHukum::class, 'produk_hukum_sk_bumdes_id');
+    }
 }

@@ -21,11 +21,23 @@ class PersonilController extends Controller
     
     public function getByBidang($id_bidang)
     {
-        $personil = DB::table('personil')
-            ->where('id_bidang', $id_bidang)
-            ->select('id_personil', 'nama_personil')
-            ->orderBy('nama_personil')
-            ->get();
-        return response()->json($personil);
+        try {
+            $personil = DB::table('personil')
+                ->where('id_bidang', $id_bidang)
+                ->select('id_personil', 'nama_personil')
+                ->orderBy('nama_personil')
+                ->get();
+                
+            return response()->json([
+                'success' => true,
+                'data' => $personil
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching personil data: ' . $e->getMessage(),
+                'data' => []
+            ], 500);
+        }
     }
 }
