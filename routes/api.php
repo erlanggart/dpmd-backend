@@ -717,6 +717,14 @@ Route::middleware(['auth:sanctum', 'role:desa|superadmin'])->prefix('desa')->gro
     Route::apiResource('/lpm', LpmController::class)->except(['show']);
     Route::apiResource('/satlinmas', SatlinmasController::class)->except(['show']);
     Route::apiResource('/pkk', PkkController::class)->except(['show']);
+
+    // BUMDES routes for desa
+    Route::get('/bumdes', [BumdesController::class, 'getDesaBumdes']);
+    Route::post('/bumdes', [BumdesController::class, 'storeDesaBumdes']);
+    Route::put('/bumdes/{id}', [BumdesController::class, 'updateDesaBumdes']);
+    Route::delete('/bumdes/{id}', [BumdesController::class, 'deleteDesaBumdes']);
+    Route::get('/bumdes/statistics', [BumdesController::class, 'getDesaBumdesStatistics']);
+    Route::get('/bumdes/produk-hukum', [BumdesController::class, 'getProdukHukumForBumdes']);
 });
 
 // Route untuk akses file musdesus dengan URL yang benar: /api/uploads/musdesus/filename

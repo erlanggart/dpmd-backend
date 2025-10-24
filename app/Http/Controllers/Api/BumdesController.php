@@ -1232,4 +1232,755 @@ class BumdesController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get BUMDES data for specific desa (called from desa dashboard)
+     */
+    public function getByDesa(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            // Only allow desa users or superadmin
+            if (!in_array($user->role, ['desa', 'superadmin'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            // For desa users, get their desa_id, for superadmin allow desa_id parameter
+            $desaId = $user->role === 'superadmin' && $request->has('desa_id') 
+                ? $request->get('desa_id') 
+                : $user->desa_id;
+
+            if (!$desaId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Desa ID required'
+                ], 400);
+            }
+
+            // Find BUMDES for this desa
+            $bumdes = Bumdes::where('desa_id', $desaId)->first();
+
+            if ($bumdes) {
+                return response()->json([
+                    'success' => true,
+                    'data' => $bumdes,
+                    'message' => 'Data BUMDES berhasil diambil'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'data' => null,
+                    'message' => 'Data BUMDES belum tersedia'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error getting BUMDES by desa: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil data BUMDES'
+            ], 500);
+        }
+    }
+
+    /**
+     * Store new BUMDES data from desa dashboard
+     */
+    public function storeByDesa(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            // Only allow desa users or superadmin
+            if (!in_array($user->role, ['desa', 'superadmin'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            $desaId = $user->role === 'superadmin' && $request->has('desa_id') 
+                ? $request->get('desa_id') 
+                : $user->desa_id;
+
+            if (!$desaId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Desa ID required'
+                ], 400);
+            }
+
+            // Check if BUMDES already exists for this desa
+            $existingBumdes = Bumdes::where('desa_id', $desaId)->first();
+            if ($existingBumdes) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'BUMDES untuk desa ini sudah ada. Gunakan update untuk mengubah data.'
+                ], 409);
+            }
+
+            // Validate required fields
+            $validated = $request->validate([
+                'namabumdesa' => 'required|string|max:255',
+                'desa' => 'required|string|max:255',
+                'kecamatan' => 'required|string|max:255',
+                'kode_desa' => 'nullable|string|max:50',
+                'TahunPendirian' => 'nullable|integer|min:1900|max:' . date('Y'),
+                'AlamatBumdes' => 'nullable|string',
+                'NoHpBumdes' => 'nullable|string|max:20',
+                'EmailBumdes' => 'nullable|email|max:255',
+                // Add other fields as needed
+            ]);
+
+            // Add desa_id and upload_status
+            $validated['desa_id'] = $desaId;
+            $validated['upload_status'] = 'uploaded';
+
+            // Create new BUMDES
+            $bumdes = Bumdes::create($validated);
+
+            return response()->json([
+                'success' => true,
+                'data' => $bumdes,
+                'message' => 'Data BUMDES berhasil disimpan'
+            ], 201);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error storing BUMDES by desa: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menyimpan data BUMDES'
+            ], 500);
+        }
+    }
+
+    /**
+     * Update BUMDES data from desa dashboard
+     */
+    public function updateByDesa(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            
+            // Only allow desa users or superadmin
+            if (!in_array($user->role, ['desa', 'superadmin'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            $bumdes = Bumdes::findOrFail($id);
+
+            // Check if user has access to this BUMDES
+            if ($user->role === 'desa' && $bumdes->desa_id !== $user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Access denied to this BUMDES data'
+                ], 403);
+            }
+
+            // Validate fields
+            $validated = $request->validate([
+                'namabumdesa' => 'required|string|max:255',
+                'desa' => 'required|string|max:255',
+                'kecamatan' => 'required|string|max:255',
+                'kode_desa' => 'nullable|string|max:50',
+                'TahunPendirian' => 'nullable|integer|min:1900|max:' . date('Y'),
+                'AlamatBumdes' => 'nullable|string',
+                'NoHpBumdes' => 'nullable|string|max:20',
+                'EmailBumdes' => 'nullable|email|max:255',
+                // Add other fields as needed
+            ]);
+
+            // Update upload_status if it was not uploaded before
+            if ($bumdes->upload_status === 'not_uploaded') {
+                $validated['upload_status'] = 'uploaded';
+            }
+
+            // Update BUMDES
+            $bumdes->update($validated);
+
+            return response()->json([
+                'success' => true,
+                'data' => $bumdes->fresh(),
+                'message' => 'Data BUMDES berhasil diperbarui'
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data BUMDES tidak ditemukan'
+            ], 404);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error updating BUMDES by desa: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memperbarui data BUMDES'
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete BUMDES data from desa dashboard
+     */
+    public function destroyByDesa(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            
+            // Only allow desa users or superadmin
+            if (!in_array($user->role, ['desa', 'superadmin'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            $bumdes = Bumdes::findOrFail($id);
+
+            // Check if user has access to this BUMDES
+            if ($user->role === 'desa' && $bumdes->desa_id !== $user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Access denied to this BUMDES data'
+                ], 403);
+            }
+
+            // Delete the BUMDES
+            $bumdes->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data BUMDES berhasil dihapus'
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data BUMDES tidak ditemukan'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error deleting BUMDES by desa: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus data BUMDES'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get BUMDES statistics for desa dashboard
+     */
+    public function getDesaStatistics(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            // Only allow desa users or superadmin
+            if (!in_array($user->role, ['desa', 'superadmin'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            $desaId = $user->role === 'superadmin' && $request->has('desa_id') 
+                ? $request->get('desa_id') 
+                : $user->desa_id;
+
+            if (!$desaId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Desa ID required'
+                ], 400);
+            }
+
+            $bumdes = Bumdes::where('desa_id', $desaId)->first();
+
+            if (!$bumdes) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'has_bumdes' => false,
+                        'upload_status' => 'not_uploaded',
+                        'last_updated' => null,
+                        'completion_percentage' => 0
+                    ]
+                ]);
+            }
+
+            // Calculate completion percentage based on filled fields
+            $requiredFields = [
+                'namabumdesa', 'desa', 'kecamatan', 'TahunPendirian',
+                'JenisUsaha', 'StatusUsaha', 'ModalAwal', 'TotalTenagaKerja'
+            ];
+
+            $filledFields = 0;
+            foreach ($requiredFields as $field) {
+                if (!empty($bumdes->$field)) {
+                    $filledFields++;
+                }
+            }
+
+            $completionPercentage = round(($filledFields / count($requiredFields)) * 100);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'has_bumdes' => true,
+                    'upload_status' => $bumdes->upload_status,
+                    'last_updated' => $bumdes->updated_at,
+                    'completion_percentage' => $completionPercentage,
+                    'nama_bumdes' => $bumdes->namabumdesa,
+                    'jenis_usaha' => $bumdes->JenisUsaha,
+                    'status_usaha' => $bumdes->StatusUsaha,
+                    'modal_awal' => $bumdes->ModalAwal,
+                    'total_tenaga_kerja' => $bumdes->TotalTenagaKerja
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting BUMDES statistics: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil statistik BUMDES'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get BUMDES data for specific desa (from desa dashboard)
+     */
+    public function getDesaBumdes(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            // Pastikan user adalah desa
+            if ($user->role !== 'desa' || !$user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses tidak diizinkan'
+                ], 403);
+            }
+
+            $bumdes = Bumdes::with(['produkHukumPerdes', 'produkHukumSkBumdes'])
+                            ->where('desa_id', $user->desa_id)
+                            ->first();
+
+            return response()->json([
+                'success' => true,
+                'data' => $bumdes
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting desa BUMDES data: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil data BUMDES'
+            ], 500);
+        }
+    }
+
+    /**
+     * Store new BUMDES data from desa
+     */
+    public function storeDesaBumdes(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            // Pastikan user adalah desa
+            if ($user->role !== 'desa' || !$user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses tidak diizinkan'
+                ], 403);
+            }
+
+            // Validasi data
+            $validated = $request->validate([
+                'namabumdesa' => 'required|string|max:255',
+                'desa' => 'nullable|string|max:255',
+                'kecamatan' => 'nullable|string|max:255',
+                'kode_desa' => 'nullable|string|max:50',
+                'TahunPendirian' => 'nullable|integer|min:1900|max:' . date('Y'),
+                'AlamatBumdes' => 'nullable|string',
+                'NoHpBumdes' => 'nullable|string|max:20',
+                'EmailBumdes' => 'nullable|email|max:255',
+                'NoPerdes' => 'nullable|string|max:100',
+                'TanggalPerdes' => 'nullable|date',
+                'NoSKKemenkumham' => 'nullable|string|max:100',
+                'TanggalSKKemenkumham' => 'nullable|date',
+                'NamaPenasihat' => 'nullable|string|max:255',
+                'NamaPengawas' => 'nullable|string|max:255',
+                'NamaDirektur' => 'nullable|string|max:255',
+                'NamaSekretaris' => 'nullable|string|max:255',
+                'NamaBendahara' => 'nullable|string|max:255',
+                'TotalTenagaKerja' => 'nullable|integer|min:0',
+                'TenagaKerjaLaki' => 'nullable|integer|min:0',
+                'TenagaKerjaPerempuan' => 'nullable|integer|min:0',
+                'JenisUsaha' => 'nullable|string|max:255',
+                'KelasUsaha' => 'nullable|string|max:100',
+                'StatusUsaha' => 'nullable|string|max:100',
+                'ModalAwal' => 'nullable|numeric|min:0',
+                'ModalSekarang' => 'nullable|numeric|min:0',
+                'Aset' => 'nullable|numeric|min:0',
+                'KekayaanBersih' => 'nullable|numeric|min:0',
+                'Omzet2022' => 'nullable|numeric|min:0',
+                'Omzet2023' => 'nullable|numeric|min:0',
+                'Omzet2024' => 'nullable|numeric|min:0',
+                'SHU2022' => 'nullable|numeric|min:0',
+                'SHU2023' => 'nullable|numeric|min:0',
+                'SHU2024' => 'nullable|numeric|min:0',
+                'Laba2022' => 'nullable|numeric|min:0',
+                'Laba2023' => 'nullable|numeric|min:0',
+                'Laba2024' => 'nullable|numeric|min:0',
+                'PotensiWisata' => 'nullable|string',
+                'OVOP' => 'nullable|string|max:255',
+                'Ketapang2025' => 'nullable|string|max:255',
+                'DesaWisata' => 'nullable|string|max:255',
+                'KontribusiPADesRP' => 'nullable|numeric|min:0',
+                'KontribusiPADesPersen' => 'nullable|numeric|min:0|max:100',
+                'PeranOVOP' => 'nullable|string',
+                'PeranKetapang2025' => 'nullable|string',
+                'PeranDesaWisata' => 'nullable|string',
+                'BantuanKementrian' => 'nullable|string|max:255',
+                'BantuanLaptopShopee' => 'nullable|string|max:255',
+                'LaporanKeuangan' => 'nullable|string',
+                // Produk hukum integration fields
+                'produk_hukum_perdes_id' => 'nullable|uuid|exists:produk_hukums,id',
+                'produk_hukum_sk_bumdes_id' => 'nullable|uuid|exists:produk_hukums,id',
+            ]);
+
+            // Cek apakah sudah ada data BUMDES untuk desa ini
+            $existingBumdes = Bumdes::where('desa_id', $user->desa_id)->first();
+            if ($existingBumdes) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data BUMDES untuk desa ini sudah ada'
+                ], 400);
+            }
+
+            // Tambahkan data desa dan status
+            $validated['desa_id'] = $user->desa_id;
+            $validated['upload_status'] = 'uploaded';
+
+            $bumdes = Bumdes::create($validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data BUMDES berhasil disimpan',
+                'data' => $bumdes
+            ], 201);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak valid',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error storing desa BUMDES data: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menyimpan data BUMDES'
+            ], 500);
+        }
+    }
+
+    /**
+     * Update BUMDES data from desa
+     */
+    public function updateDesaBumdes(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            
+            // Pastikan user adalah desa
+            if ($user->role !== 'desa' || !$user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses tidak diizinkan'
+                ], 403);
+            }
+
+            $bumdes = Bumdes::where('id', $id)
+                           ->where('desa_id', $user->desa_id)
+                           ->first();
+
+            if (!$bumdes) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data BUMDES tidak ditemukan'
+                ], 404);
+            }
+
+            // Validasi data (sama seperti store)
+            $validated = $request->validate([
+                'namabumdesa' => 'required|string|max:255',
+                'desa' => 'nullable|string|max:255',
+                'kecamatan' => 'nullable|string|max:255',
+                'kode_desa' => 'nullable|string|max:50',
+                'TahunPendirian' => 'nullable|integer|min:1900|max:' . date('Y'),
+                'AlamatBumdes' => 'nullable|string',
+                'NoHpBumdes' => 'nullable|string|max:20',
+                'EmailBumdes' => 'nullable|email|max:255',
+                'NoPerdes' => 'nullable|string|max:100',
+                'TanggalPerdes' => 'nullable|date',
+                'NoSKKemenkumham' => 'nullable|string|max:100',
+                'TanggalSKKemenkumham' => 'nullable|date',
+                'NamaPenasihat' => 'nullable|string|max:255',
+                'NamaPengawas' => 'nullable|string|max:255',
+                'NamaDirektur' => 'nullable|string|max:255',
+                'NamaSekretaris' => 'nullable|string|max:255',
+                'NamaBendahara' => 'nullable|string|max:255',
+                'TotalTenagaKerja' => 'nullable|integer|min:0',
+                'TenagaKerjaLaki' => 'nullable|integer|min:0',
+                'TenagaKerjaPerempuan' => 'nullable|integer|min:0',
+                'JenisUsaha' => 'nullable|string|max:255',
+                'KelasUsaha' => 'nullable|string|max:100',
+                'StatusUsaha' => 'nullable|string|max:100',
+                'ModalAwal' => 'nullable|numeric|min:0',
+                'ModalSekarang' => 'nullable|numeric|min:0',
+                'Aset' => 'nullable|numeric|min:0',
+                'KekayaanBersih' => 'nullable|numeric|min:0',
+                'Omzet2022' => 'nullable|numeric|min:0',
+                'Omzet2023' => 'nullable|numeric|min:0',
+                'Omzet2024' => 'nullable|numeric|min:0',
+                'SHU2022' => 'nullable|numeric|min:0',
+                'SHU2023' => 'nullable|numeric|min:0',
+                'SHU2024' => 'nullable|numeric|min:0',
+                'Laba2022' => 'nullable|numeric|min:0',
+                'Laba2023' => 'nullable|numeric|min:0',
+                'Laba2024' => 'nullable|numeric|min:0',
+                'PotensiWisata' => 'nullable|string',
+                'OVOP' => 'nullable|string|max:255',
+                'Ketapang2025' => 'nullable|string|max:255',
+                'DesaWisata' => 'nullable|string|max:255',
+                'KontribusiPADesRP' => 'nullable|numeric|min:0',
+                'KontribusiPADesPersen' => 'nullable|numeric|min:0|max:100',
+                'PeranOVOP' => 'nullable|string',
+                'PeranKetapang2025' => 'nullable|string',
+                'PeranDesaWisata' => 'nullable|string',
+                'BantuanKementrian' => 'nullable|string|max:255',
+                'BantuanLaptopShopee' => 'nullable|string|max:255',
+                'LaporanKeuangan' => 'nullable|string',
+                // Produk hukum integration fields
+                'produk_hukum_perdes_id' => 'nullable|uuid|exists:produk_hukums,id',
+                'produk_hukum_sk_bumdes_id' => 'nullable|uuid|exists:produk_hukums,id',
+            ]);
+
+            // Update data dan status
+            $validated['upload_status'] = 'uploaded';
+            $bumdes->update($validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data BUMDES berhasil diperbarui',
+                'data' => $bumdes->fresh()
+            ]);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak valid',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error updating desa BUMDES data: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memperbarui data BUMDES'
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete BUMDES data from desa
+     */
+    public function deleteDesaBumdes(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            
+            // Pastikan user adalah desa
+            if ($user->role !== 'desa' || !$user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses tidak diizinkan'
+                ], 403);
+            }
+
+            $bumdes = Bumdes::where('id', $id)
+                           ->where('desa_id', $user->desa_id)
+                           ->first();
+
+            if (!$bumdes) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data BUMDES tidak ditemukan'
+                ], 404);
+            }
+
+            $bumdes->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data BUMDES berhasil dihapus'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error deleting desa BUMDES data: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus data BUMDES'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get BUMDES statistics for desa
+     */
+    public function getDesaBumdesStatistics(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            // Pastikan user adalah desa
+            if ($user->role !== 'desa' || !$user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses tidak diizinkan'
+                ], 403);
+            }
+
+            $bumdes = Bumdes::where('desa_id', $user->desa_id)->first();
+
+            if (!$bumdes) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'has_bumdes' => false,
+                        'upload_status' => 'not_uploaded',
+                        'completion_percentage' => 0
+                    ]
+                ]);
+            }
+
+            // Hitung persentase kelengkapan data
+            $requiredFields = ['namabumdesa', 'TahunPendirian', 'JenisUsaha'];
+            $filledFields = 0;
+            $totalFields = count($requiredFields);
+
+            foreach ($requiredFields as $field) {
+                if (!empty($bumdes->$field)) {
+                    $filledFields++;
+                }
+            }
+
+            $completionPercentage = ($filledFields / $totalFields) * 100;
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'has_bumdes' => true,
+                    'upload_status' => $bumdes->upload_status ?? 'uploaded',
+                    'completion_percentage' => round($completionPercentage, 2),
+                    'nama_bumdes' => $bumdes->namabumdesa,
+                    'jenis_usaha' => $bumdes->JenisUsaha,
+                    'status_usaha' => $bumdes->StatusUsaha,
+                    'modal_awal' => $bumdes->ModalAwal,
+                    'total_tenaga_kerja' => $bumdes->TotalTenagaKerja,
+                    'last_updated' => $bumdes->updated_at
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting desa BUMDES statistics: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil statistik BUMDES'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get produk hukum yang relevan untuk BUMDES (PERDES dan SK)
+     */
+    public function getProdukHukumForBumdes(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            // Pastikan user adalah desa
+            if ($user->role !== 'desa' || !$user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses tidak diizinkan'
+                ], 403);
+            }
+
+            // Ambil produk hukum desa yang relevan untuk BUMDES
+            $produkHukum = \App\Models\ProdukHukum::where('desa_id', $user->desa_id)
+                ->where(function($query) {
+                    // PERDES (Peraturan Desa)
+                    $query->where('jenis', 'Peraturan Desa')
+                          ->where(function($subQuery) {
+                              $subQuery->where('judul', 'like', '%bumdes%')
+                                       ->orWhere('judul', 'like', '%badan usaha milik desa%')
+                                       ->orWhere('subjek', 'like', '%bumdes%')
+                                       ->orWhere('subjek', 'like', '%badan usaha milik desa%');
+                          });
+                })
+                ->orWhere(function($query) use ($user) {
+                    // SK (Surat Keputusan)
+                    $query->where('desa_id', $user->desa_id)
+                          ->where('jenis', 'Keputusan Kepala Desa')
+                          ->where(function($subQuery) {
+                              $subQuery->where('judul', 'like', '%bumdes%')
+                                       ->orWhere('judul', 'like', '%badan usaha milik desa%')
+                                       ->orWhere('judul', 'like', '%pembentukan%')
+                                       ->orWhere('subjek', 'like', '%bumdes%')
+                                       ->orWhere('subjek', 'like', '%badan usaha milik desa%');
+                          });
+                })
+                ->select('id', 'judul', 'nomor', 'tahun', 'jenis', 'singkatan_jenis', 'tanggal_penetapan', 'file')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'perdes' => $produkHukum->where('jenis', 'Peraturan Desa')->values(),
+                    'sk_bumdes' => $produkHukum->where('jenis', 'Keputusan Kepala Desa')->values(),
+                    'all' => $produkHukum
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting produk hukum for BUMDES: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil data produk hukum'
+            ], 500);
+        }
+    }
 }
