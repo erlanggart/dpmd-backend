@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ProdukHukumController extends Controller
 {
@@ -248,5 +249,54 @@ class ProdukHukumController extends Controller
             'message' => 'Status Produk Hukum berhasil diupdate',
             'data' => $produkHukum
         ], 200);
+    }
+
+    /**
+     * Download/view file produk hukum
+     * Path file: storage/app/uploads/produk_hukum/ (local)
+     * URL: /api/desa/produk-hukum/{id}/download (local & production)
+     */
+    public function downloadFile($id)
+    {
+        $produkHukum = ProdukHukum::find($id);
+
+        if (!$produkHukum || !$produkHukum->file) {
+            return response()->json([
+                'success' => false,
+                'message' => 'File tidak ditemukan',
+            ], 404);
+        }
+
+        // File disimpan di storage/app/uploads/produk_hukum/
+        $filePath = 'produk_hukum/' . $produkHukum->file;
+        
+        // Cek apakah file ada di disk public_uploads (storage/app/uploads/)
+        if (!Storage::disk('public_uploads')->exists($filePath)) {
+            Log::warning("Produk Hukum file not found", [
+                'id' => $id,
+                'file' => $produkHukum->file,
+                'full_path' => Storage::disk('public_uploads')->path($filePath),
+                'disk_root' => Storage::disk('public_uploads')->path(''),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'File tidak ada di storage',
+                'debug' => [
+                    'file' => $produkHukum->file,
+                    'path' => $filePath,
+                    'disk_root' => config('filesystems.disks.public_uploads.root')
+                ]
+            ], 404);
+        }
+
+        // Return file dengan header yang sesuai untuk ditampilkan di browser
+        return response()->file(
+            Storage::disk('public_uploads')->path($filePath),
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $produkHukum->file . '"'
+            ]
+        );
     }
 }

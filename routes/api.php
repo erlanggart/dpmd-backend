@@ -101,13 +101,17 @@ Route::middleware(['auth:sanctum', 'role:desa|superadmin|sekretariat|sarana_pras
     Route::post('/profil-desa', [ProfilDesaController::class, 'store']);
     Route::apiResource('/produk-hukum', ProdukHukumController::class)->except(['show']);
     Route::put('/produk-hukum/{id}/status', [ProdukHukumController::class, 'updateStatus']);
-}); // Rute Publik untuk Produk Hukum
+}); 
+// Rute Publik untuk Produk Hukum
 Route::get('/produk-hukum/{produkHukum}', [ProdukHukumController::class, 'show']);
 
 Route::get('/products', [ProductController::class, 'index']);
 
 
 
+Route::get('/login', function() {
+    return response()->json(['message' => 'Unauthenticated. Please login first.'], 401);
+})->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/login/bidang', [AuthController::class, 'loginBidang']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
@@ -259,6 +263,7 @@ Route::get('/bumdes/dokumen-badan-hukum', [BumdesController::class, 'getDokumenB
 Route::get('/bumdes/dokumen-badan-hukum-fast', [BumdesController::class, 'getDokumenBadanHukumFast']);
 Route::get('/bumdes/laporan-keuangan', [BumdesController::class, 'getLaporanKeuangan']);
 Route::get('/bumdes/laporan-keuangan-fast', [BumdesController::class, 'getLaporanKeuanganFast']);
+Route::get('/bumdes/produk-hukum', [BumdesController::class, 'getProdukHukumFiles']); // Get all produk hukum files for admin
 Route::delete('/bumdes/delete-file', [BumdesController::class, 'deleteFile']);
 
 // Route untuk serve file dari storage
@@ -679,6 +684,7 @@ Route::middleware(['auth:sanctum', 'role:desa|superadmin'])->prefix('desa')->gro
     Route::apiResource('/produk-hukum', ProdukHukumController::class);
     Route::post('/produk-hukum/{id}', [ProdukHukumController::class, 'update']);
     Route::put('/produk-hukum/status/{id}', [ProdukHukumController::class, 'updateStatus']);
+    Route::get('/produk-hukum/{id}/download', [ProdukHukumController::class, 'downloadFile']); // Endpoint download file
     Route::apiResource('/aparatur-desa', AparaturDesaController::class);
     Route::post('/aparatur-desa/{id}', [AparaturDesaController::class, 'update']);
 
@@ -721,10 +727,12 @@ Route::middleware(['auth:sanctum', 'role:desa|superadmin'])->prefix('desa')->gro
     // BUMDES routes for desa
     Route::get('/bumdes', [BumdesController::class, 'getDesaBumdes']);
     Route::post('/bumdes', [BumdesController::class, 'storeDesaBumdes']);
+    Route::post('/bumdes/upload-file', [BumdesController::class, 'uploadDesaBumdesFile']); // 2-step upload - MUST BE BEFORE {id} routes
+    Route::get('/bumdes/statistics', [BumdesController::class, 'getDesaBumdesStatistics']); // MUST BE BEFORE {id} routes
+    Route::get('/bumdes/produk-hukum', [BumdesController::class, 'getProdukHukumForBumdes']); // MUST BE BEFORE {id} routes
     Route::put('/bumdes/{id}', [BumdesController::class, 'updateDesaBumdes']);
+    Route::post('/bumdes/{id}', [BumdesController::class, 'updateDesaBumdes']); // POST for file uploads (method spoofing)
     Route::delete('/bumdes/{id}', [BumdesController::class, 'deleteDesaBumdes']);
-    Route::get('/bumdes/statistics', [BumdesController::class, 'getDesaBumdesStatistics']);
-    Route::get('/bumdes/produk-hukum', [BumdesController::class, 'getProdukHukumForBumdes']);
 });
 
 // Route untuk akses file musdesus dengan URL yang benar: /api/uploads/musdesus/filename

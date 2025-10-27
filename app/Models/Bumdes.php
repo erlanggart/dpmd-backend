@@ -4,10 +4,41 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class Bumdes extends Model
 {
     use HasFactory;
+
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (Bumdes $bumdes) {
+            // Delete all associated files
+            $fileFields = [
+                'LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024',
+                'Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 
+                'AnggaranRumahTangga', 'ProgramKerja', 'SK_BUM_Desa'
+            ];
+
+            foreach ($fileFields as $field) {
+                if (!empty($bumdes->$field)) {
+                    $filePath = 'uploads/' . $bumdes->$field;
+                    if (Storage::exists($filePath)) {
+                        Storage::delete($filePath);
+                        Log::info("BUMDES File Deleted", [
+                            'bumdes_id' => $bumdes->id,
+                            'field' => $field,
+                            'path' => $filePath
+                        ]);
+                    }
+                }
+            }
+        });
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -77,18 +108,18 @@ class Bumdes extends Model
         // Foreign key fields for produk hukum integration
         'produk_hukum_perdes_id',
         'produk_hukum_sk_bumdes_id',
-        // FILE FIELDS REMOVED FROM FILLABLE - harus di-handle manual di controller
-        // 'LaporanKeuangan2021',
-        // 'LaporanKeuangan2022',
-        // 'LaporanKeuangan2023',
-        // 'LaporanKeuangan2024',
-        // 'Perdes',
-        // 'ProfilBUMDesa',
-        // 'BeritaAcara',
-        // 'AnggaranDasar',
-        // 'AnggaranRumahTangga',
-        // 'ProgramKerja',
-        // 'SK_BUM_Desa',
+        // File upload fields - paths stored as strings
+        'LaporanKeuangan2021',
+        'LaporanKeuangan2022',
+        'LaporanKeuangan2023',
+        'LaporanKeuangan2024',
+        'Perdes',
+        'ProfilBUMDesa',
+        'BeritaAcara',
+        'AnggaranDasar',
+        'AnggaranRumahTangga',
+        'ProgramKerja',
+        'SK_BUM_Desa',
     ];
 
     /**

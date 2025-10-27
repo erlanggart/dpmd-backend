@@ -154,7 +154,8 @@ class BumdesController extends Controller
             // Determine folder based on file type
             $folder = 'bumdes'; // default
             $laporanKeuanganFields = ['LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024'];
-            $dokumenBadanHukumFields = ['Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 'AnggaranRumahTangga', 'ProgramKerja', 'SK_BUM_Desa'];
+            // Perdes dan SK_BUM_Desa sudah terintegrasi dengan Produk Hukum Desa
+            $dokumenBadanHukumFields = ['ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 'AnggaranRumahTangga', 'ProgramKerja'];
             
             if (in_array($fileKey, $laporanKeuanganFields)) {
                 $folder = 'bumdes_laporan_keuangan';
@@ -168,13 +169,34 @@ class BumdesController extends Controller
             
             // Store file using Laravel Storage (storage/app/uploads/{folder})
             $storagePath = "uploads/{$folder}";
+            
+            Log::info("BUMDES Attempting File Save", [
+                'field' => $fileKey,
+                'filename' => $filename,
+                'storage_path' => $storagePath,
+                'full_path' => storage_path("app/{$storagePath}/{$filename}"),
+                'file_size' => $file->getSize(),
+                'mime_type' => $file->getMimeType()
+            ]);
+            
             $path = $file->storeAs($storagePath, $filename);
+            
+            Log::info("BUMDES File Storage Result", [
+                'field' => $fileKey,
+                'returned_path' => $path,
+                'success' => $path !== false,
+                'file_exists' => Storage::exists($path)
+            ]);
             
             if ($path) {
                 // Return relative path from uploads folder
                 $relativePath = "{$folder}/{$filename}";
                 return $relativePath;
             } else {
+                Log::error("BUMDES File Storage Failed", [
+                    'field' => $fileKey,
+                    'filename' => $filename
+                ]);
                 return null;
             }
         }
@@ -269,28 +291,24 @@ class BumdesController extends Controller
                 'BantuanLaptopShopee' => 'nullable|string',
                 'NomorPerdes' => 'nullable|string',
                 'DesaWisata' => 'nullable|string',
-                'LaporanKeuangan2021' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'LaporanKeuangan2022' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'LaporanKeuangan2023' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'LaporanKeuangan2024' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'Perdes' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'ProfilBUMDesa' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'BeritaAcara' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'AnggaranDasar' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'AnggaranRumahTangga' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'ProgramKerja' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'SK_BUM_Desa' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-            ]);
+            'LaporanKeuangan2021' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            'LaporanKeuangan2022' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            'LaporanKeuangan2023' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            'LaporanKeuangan2024' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            // Perdes dan SK_BUM_Desa sudah terintegrasi dengan Produk Hukum Desa
+            'ProfilBUMDesa' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            'BeritaAcara' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            'AnggaranDasar' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            'AnggaranRumahTangga' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            'ProgramKerja' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+        ]);
 
-            // Pisahkan data file dan non-file
-            $dataToSave = [];
-            $fileFields = [
-                'LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024',
-                'Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 'AnggaranRumahTangga',
-                'ProgramKerja', 'SK_BUM_Desa'
-            ];
-            
-            // Ambil hanya data non-file untuk create
+        // Pisahkan data file dan non-file
+        $dataToSave = [];
+        $fileFields = [
+            'LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024',
+            'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 'AnggaranRumahTangga', 'ProgramKerja'
+        ];            // Ambil hanya data non-file untuk create
             foreach ($validatedData as $key => $value) {
                 if (!in_array($key, $fileFields)) {
                     $dataToSave[$key] = $value;
@@ -411,31 +429,29 @@ class BumdesController extends Controller
                 'Ketapang2025' => 'nullable|string',
                 'BantuanKementrian' => 'nullable|string',
                 'BantuanLaptopShopee' => 'nullable|string',
-                'NomorPerdes' => 'nullable|string',
-                'DesaWisata' => 'nullable|string',
-                'LaporanKeuangan2021' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'LaporanKeuangan2022' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'LaporanKeuangan2023' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'LaporanKeuangan2024' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'Perdes' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'ProfilBUMDesa' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'BeritaAcara' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'AnggaranDasar' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'AnggaranRumahTangga' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'ProgramKerja' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-                'SK_BUM_Desa' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
-            ]);
+            'NomorPerdes' => 'nullable|string',
+            'DesaWisata' => 'nullable|string',
+            'LaporanKeuangan2021' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            'LaporanKeuangan2022' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            'LaporanKeuangan2023' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            'LaporanKeuangan2024' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            // Perdes dan SK_BUM_Desa sudah terintegrasi dengan Produk Hukum Desa
+            'ProfilBUMDesa' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            'BeritaAcara' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            'AnggaranDasar' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            'AnggaranRumahTangga' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+            'ProgramKerja' => 'nullable|file|mimes:pdf,docx,doc|max:5120',
+        ]);
 
-            // Fill the model with validated data (non-file fields)
-            $bumdes->fill($validatedData);
+        // Fill the model with validated data (non-file fields)
+        $bumdes->fill($validatedData);
 
-            $fileFields = [
-                'LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024',
-                'Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 'AnggaranRumahTangga',
-                'ProgramKerja', 'SK_BUM_Desa'
-            ];
-            
-            // Proses unggahan berkas satu per satu
+        $fileFields = [
+            'LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024',
+            'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 'AnggaranRumahTangga', 'ProgramKerja'
+        ];
+        
+        // Proses unggahan berkas satu per satu
             foreach ($fileFields as $field) {
                 if ($request->hasFile($field)) {
                     $path = $this->uploadFile($request, $field, $bumdes->$field);
@@ -1035,6 +1051,103 @@ class BumdesController extends Controller
     }
 
     /**
+     * Get all produk hukum files from storage for admin
+     */
+    public function getProdukHukumFiles()
+    {
+        try {
+            $documents = [];
+            
+            // Scan produk_hukum folder
+            $produkHukumPath = storage_path('app/uploads/produk_hukum');
+            
+            Log::info("Produk Hukum Scan Path", [
+                'path' => $produkHukumPath,
+                'exists' => is_dir($produkHukumPath)
+            ]);
+            
+            if (is_dir($produkHukumPath)) {
+                $files = array_diff(scandir($produkHukumPath), array('.', '..'));
+                
+                foreach ($files as $fileName) {
+                    $filePath = $produkHukumPath . '/' . $fileName;
+                    
+                    // Skip directories and system files
+                    if (is_dir($filePath) || in_array($fileName, ['.gitignore', '.DS_Store', 'Thumbs.db'])) {
+                        continue;
+                    }
+                    
+                    $fileStats = $this->getFileStats($filePath);
+                    $matchedBumdes = $this->findMatchingBumdes($fileName);
+                    
+                    // Try to find in ProdukHukum table
+                    $produkHukum = \App\Models\ProdukHukum::where('file', 'LIKE', '%' . $fileName . '%')->first();
+                    
+                    $document = [
+                        'filename' => $fileName,
+                        'original_path' => 'uploads/produk_hukum/' . $fileName,
+                        'document_type' => $produkHukum ? $produkHukum->jenis : 'Produk Hukum',
+                        'document_label' => $produkHukum ? ($produkHukum->nomor . ' - ' . $produkHukum->judul) : $fileName,
+                        'size' => $fileStats['size'],
+                        'file_size_formatted' => $this->formatBytes($fileStats['size']),
+                        'extension' => pathinfo($fileName, PATHINFO_EXTENSION),
+                        'last_modified' => $fileStats['last_modified'],
+                        'url' => '/api/uploads/produk_hukum/' . $fileName,
+                        'download_url' => $fileStats['exists'] ? $this->getStorageUrl('produk_hukum/' . $fileName) : null,
+                        'file_exists' => $fileStats['exists'],
+                        'status' => $fileStats['exists'] ? 'available' : 'missing',
+                        'matched_bumdes' => $matchedBumdes,
+                        'bumdes_name' => !empty($matchedBumdes) ? $matchedBumdes[0]['namabumdesa'] : 'Tidak Diketahui',
+                        'desa' => !empty($matchedBumdes) ? $matchedBumdes[0]['desa'] : '',
+                        'kecamatan' => !empty($matchedBumdes) ? $matchedBumdes[0]['kecamatan'] : '',
+                        'id' => !empty($matchedBumdes) ? $matchedBumdes[0]['id'] : null,
+                        'bumdes_info' => !empty($matchedBumdes) ? $matchedBumdes[0] : null,
+                        'produk_hukum_info' => $produkHukum ? [
+                            'id' => $produkHukum->id,
+                            'judul' => $produkHukum->judul,
+                            'nomor' => $produkHukum->nomor,
+                            'jenis' => $produkHukum->jenis,
+                            'tahun' => $produkHukum->tahun
+                        ] : null
+                    ];
+                    
+                    $documents[] = $document;
+                }
+            }
+            
+            // Sort by filename
+            usort($documents, function($a, $b) {
+                return strcmp($a['filename'], $b['filename']);
+            });
+            
+            $summary = [
+                'total_documents' => count($documents),
+                'accessible_files' => count(array_filter($documents, function($doc) { 
+                    return $doc['file_exists']; 
+                })),
+                'missing_files' => count(array_filter($documents, function($doc) { 
+                    return !$doc['file_exists']; 
+                }))
+            ];
+            
+            return response()->json([
+                'status' => 'success',
+                'message' => 'File produk hukum berhasil diambil',
+                'data' => $documents,
+                'summary' => $summary
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting produk hukum files: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan saat mengambil file produk hukum',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Link a document to a specific BUMDes
      */
     public function linkDocument(Request $request)
@@ -1607,6 +1720,15 @@ class BumdesController extends Controller
         try {
             $user = $request->user();
             
+            // Log request untuk debugging
+            Log::info("BUMDES Store Request Received", [
+                'desa_id' => $user->desa_id,
+                'content_type' => $request->header('Content-Type'),
+                'has_profil' => $request->hasFile('ProfilBUMDesa'),
+                'has_laporan' => $request->hasFile('LaporanKeuangan2021'),
+                'all_files' => array_keys($request->allFiles())
+            ]);
+            
             // Pastikan user adalah desa
             if ($user->role !== 'desa' || !$user->desa_id) {
                 return response()->json([
@@ -1623,17 +1745,39 @@ class BumdesController extends Controller
                 'kode_desa' => 'nullable|string|max:50',
                 'TahunPendirian' => 'nullable|integer|min:1900|max:' . date('Y'),
                 'AlamatBumdes' => 'nullable|string',
+                'AlamatBumdesa' => 'nullable|string', // Alias untuk AlamatBumdes
                 'NoHpBumdes' => 'nullable|string|max:20',
+                'TelfonBumdes' => 'nullable|string|max:20', // Alias untuk NoHpBumdes
                 'EmailBumdes' => 'nullable|email|max:255',
+                'Alamatemail' => 'nullable|email|max:255', // Alias untuk EmailBumdes
+                'status' => 'nullable|string|in:aktif,tidak aktif',
+                'keterangan_tidak_aktif' => 'nullable|string',
                 'NoPerdes' => 'nullable|string|max:100',
+                'NomorPerdes' => 'nullable|string|max:100', // Alias untuk NoPerdes
                 'TanggalPerdes' => 'nullable|date',
                 'NoSKKemenkumham' => 'nullable|string|max:100',
                 'TanggalSKKemenkumham' => 'nullable|date',
+                // Legalitas
+                'NIB' => 'nullable|string|max:100',
+                'LKPP' => 'nullable|string|max:100',
+                'NPWP' => 'nullable|string|max:100',
+                'badanhukum' => 'nullable|string|max:255',
+                // Kepengurusan dengan Jenis Kelamin dan HP
                 'NamaPenasihat' => 'nullable|string|max:255',
+                'JenisKelaminPenasihat' => 'nullable|string|in:Laki-laki,Perempuan',
+                'HPPenasihat' => 'nullable|string|max:20',
                 'NamaPengawas' => 'nullable|string|max:255',
+                'JenisKelaminPengawas' => 'nullable|string|in:Laki-laki,Perempuan',
+                'HPPengawas' => 'nullable|string|max:20',
                 'NamaDirektur' => 'nullable|string|max:255',
+                'JenisKelaminDirektur' => 'nullable|string|in:Laki-laki,Perempuan',
+                'HPDirektur' => 'nullable|string|max:20',
                 'NamaSekretaris' => 'nullable|string|max:255',
+                'JenisKelaminSekretaris' => 'nullable|string|in:Laki-laki,Perempuan',
+                'HPSekretaris' => 'nullable|string|max:20',
                 'NamaBendahara' => 'nullable|string|max:255',
+                'JenisKelaminBendahara' => 'nullable|string|in:Laki-laki,Perempuan',
+                'HPBendahara' => 'nullable|string|max:20',
                 'TotalTenagaKerja' => 'nullable|integer|min:0',
                 'TenagaKerjaLaki' => 'nullable|integer|min:0',
                 'TenagaKerjaPerempuan' => 'nullable|integer|min:0',
@@ -1668,7 +1812,28 @@ class BumdesController extends Controller
                 // Produk hukum integration fields
                 'produk_hukum_perdes_id' => 'nullable|uuid|exists:produk_hukums,id',
                 'produk_hukum_sk_bumdes_id' => 'nullable|uuid|exists:produk_hukums,id',
+                // File uploads - Laporan Keuangan
+                'LaporanKeuangan2021' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+                'LaporanKeuangan2022' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+                'LaporanKeuangan2023' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+                'LaporanKeuangan2024' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+                // File uploads - Dokumen Badan Hukum
+                'Perdes' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+                'ProfilBUMDesa' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+                'BeritaAcara' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+                'AnggaranDasar' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+                'AnggaranRumahTangga' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+                'ProgramKerja' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+                'SK_BUM_Desa' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
             ]);
+
+            // Convert empty strings to null untuk UUID fields
+            if (empty($validated['produk_hukum_perdes_id'])) {
+                $validated['produk_hukum_perdes_id'] = null;
+            }
+            if (empty($validated['produk_hukum_sk_bumdes_id'])) {
+                $validated['produk_hukum_sk_bumdes_id'] = null;
+            }
 
             // Cek apakah sudah ada data BUMDES untuk desa ini
             $existingBumdes = Bumdes::where('desa_id', $user->desa_id)->first();
@@ -1679,9 +1844,44 @@ class BumdesController extends Controller
                 ], 400);
             }
 
-            // Tambahkan data desa dan status
+            // Handle file uploads
+            $fileFields = [
+                // Laporan Keuangan
+                'LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024',
+                // Dokumen Badan Hukum
+                'Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 
+                'AnggaranRumahTangga', 'ProgramKerja', 'SK_BUM_Desa'
+            ];
+
+            $uploadedFiles = [];
+            foreach ($fileFields as $fileField) {
+                if ($request->hasFile($fileField)) {
+                    Log::info("BUMDES File Upload Detected", [
+                        'field' => $fileField,
+                        'original_name' => $request->file($fileField)->getClientOriginalName(),
+                        'size' => $request->file($fileField)->getSize(),
+                        'mime' => $request->file($fileField)->getMimeType()
+                    ]);
+                    
+                    $filePath = $this->uploadFile($request, $fileField);
+                    $validated[$fileField] = $filePath;
+                    $uploadedFiles[$fileField] = $filePath;
+                    
+                    Log::info("BUMDES File Uploaded", [
+                        'field' => $fileField,
+                        'path' => $filePath
+                    ]);
+                }
+            }
+            
+            Log::info("BUMDES Create Summary", [
+                'desa_id' => $user->desa_id,
+                'uploaded_files_count' => count($uploadedFiles),
+                'uploaded_files' => $uploadedFiles
+            ]);
+
+            // Tambahkan data desa
             $validated['desa_id'] = $user->desa_id;
-            $validated['upload_status'] = 'uploaded';
 
             $bumdes = Bumdes::create($validated);
 
@@ -1733,7 +1933,7 @@ class BumdesController extends Controller
                 ], 404);
             }
 
-            // Validasi data (sama seperti store)
+            // Validasi data (tanpa file fields dulu)
             $validated = $request->validate([
                 'namabumdesa' => 'required|string|max:255',
                 'desa' => 'nullable|string|max:255',
@@ -1741,17 +1941,37 @@ class BumdesController extends Controller
                 'kode_desa' => 'nullable|string|max:50',
                 'TahunPendirian' => 'nullable|integer|min:1900|max:' . date('Y'),
                 'AlamatBumdes' => 'nullable|string',
+                'AlamatBumdesa' => 'nullable|string',
                 'NoHpBumdes' => 'nullable|string|max:20',
+                'TelfonBumdes' => 'nullable|string|max:20',
                 'EmailBumdes' => 'nullable|email|max:255',
+                'Alamatemail' => 'nullable|email|max:255',
+                'status' => 'nullable|string|in:aktif,tidak aktif',
+                'keterangan_tidak_aktif' => 'nullable|string',
                 'NoPerdes' => 'nullable|string|max:100',
+                'NomorPerdes' => 'nullable|string|max:100',
                 'TanggalPerdes' => 'nullable|date',
                 'NoSKKemenkumham' => 'nullable|string|max:100',
                 'TanggalSKKemenkumham' => 'nullable|date',
+                'NIB' => 'nullable|string|max:100',
+                'LKPP' => 'nullable|string|max:100',
+                'NPWP' => 'nullable|string|max:100',
+                'badanhukum' => 'nullable|string|max:255',
                 'NamaPenasihat' => 'nullable|string|max:255',
+                'JenisKelaminPenasihat' => 'nullable|string|in:Laki-laki,Perempuan',
+                'HPPenasihat' => 'nullable|string|max:20',
                 'NamaPengawas' => 'nullable|string|max:255',
+                'JenisKelaminPengawas' => 'nullable|string|in:Laki-laki,Perempuan',
+                'HPPengawas' => 'nullable|string|max:20',
                 'NamaDirektur' => 'nullable|string|max:255',
+                'JenisKelaminDirektur' => 'nullable|string|in:Laki-laki,Perempuan',
+                'HPDirektur' => 'nullable|string|max:20',
                 'NamaSekretaris' => 'nullable|string|max:255',
+                'JenisKelaminSekretaris' => 'nullable|string|in:Laki-laki,Perempuan',
+                'HPSekretaris' => 'nullable|string|max:20',
                 'NamaBendahara' => 'nullable|string|max:255',
+                'JenisKelaminBendahara' => 'nullable|string|in:Laki-laki,Perempuan',
+                'HPBendahara' => 'nullable|string|max:20',
                 'TotalTenagaKerja' => 'nullable|integer|min:0',
                 'TenagaKerjaLaki' => 'nullable|integer|min:0',
                 'TenagaKerjaPerempuan' => 'nullable|integer|min:0',
@@ -1783,13 +2003,76 @@ class BumdesController extends Controller
                 'BantuanKementrian' => 'nullable|string|max:255',
                 'BantuanLaptopShopee' => 'nullable|string|max:255',
                 'LaporanKeuangan' => 'nullable|string',
-                // Produk hukum integration fields
                 'produk_hukum_perdes_id' => 'nullable|uuid|exists:produk_hukums,id',
                 'produk_hukum_sk_bumdes_id' => 'nullable|uuid|exists:produk_hukums,id',
             ]);
+            
+            // Validate file uploads separately (only if present as actual files)
+            $fileFields = [
+                'LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024',
+                'Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 
+                'AnggaranRumahTangga', 'ProgramKerja', 'SK_BUM_Desa'
+            ];
+            
+            $fileValidationRules = [];
+            foreach ($fileFields as $field) {
+                if ($request->hasFile($field)) {
+                    $fileValidationRules[$field] = 'file|mimes:pdf,doc,docx,xls,xlsx|max:5120';
+                }
+            }
+            
+            if (!empty($fileValidationRules)) {
+                $request->validate($fileValidationRules);
+            }
 
-            // Update data dan status
-            $validated['upload_status'] = 'uploaded';
+            // Convert empty strings to null untuk UUID fields
+            if (empty($validated['produk_hukum_perdes_id'])) {
+                $validated['produk_hukum_perdes_id'] = null;
+            }
+            if (empty($validated['produk_hukum_sk_bumdes_id'])) {
+                $validated['produk_hukum_sk_bumdes_id'] = null;
+            }
+
+            // Handle file uploads
+            $fileFields = [
+                // Laporan Keuangan
+                'LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024',
+                // Dokumen Badan Hukum
+                'Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 
+                'AnggaranRumahTangga', 'ProgramKerja', 'SK_BUM_Desa'
+            ];
+
+            $uploadedFiles = [];
+            foreach ($fileFields as $fileField) {
+                if ($request->hasFile($fileField)) {
+                    Log::info("BUMDES File Upload Detected (Update)", [
+                        'bumdes_id' => $id,
+                        'field' => $fileField,
+                        'original_name' => $request->file($fileField)->getClientOriginalName(),
+                        'size' => $request->file($fileField)->getSize()
+                    ]);
+                    
+                    // Hapus file lama jika ada
+                    $currentFilePath = $bumdes->$fileField;
+                    $filePath = $this->uploadFile($request, $fileField, $currentFilePath);
+                    $validated[$fileField] = $filePath;
+                    $uploadedFiles[$fileField] = $filePath;
+                    
+                    Log::info("BUMDES File Uploaded (Update)", [
+                        'field' => $fileField,
+                        'new_path' => $filePath,
+                        'old_path' => $currentFilePath
+                    ]);
+                }
+            }
+            
+            Log::info("BUMDES Update Summary", [
+                'bumdes_id' => $id,
+                'uploaded_files_count' => count($uploadedFiles),
+                'uploaded_files' => $uploadedFiles
+            ]);
+
+            // Update data
             $bumdes->update($validated);
 
             return response()->json([
@@ -1852,6 +2135,112 @@ class BumdesController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat menghapus data BUMDES'
+            ], 500);
+        }
+    }
+
+    /**
+     * Upload single file for BUMDES (desa)
+     */
+    public function uploadDesaBumdesFile(Request $request)
+    {
+        try {
+            Log::info("=== BUMDES UPLOAD FILE REQUEST ===", [
+                'has_file' => $request->hasFile('file'),
+                'bumdes_id' => $request->input('bumdes_id'),
+                'field_name' => $request->input('field_name'),
+                'content_type' => $request->header('Content-Type')
+            ]);
+
+            $user = $request->user();
+            
+            // Pastikan user adalah desa
+            if ($user->role !== 'desa' || !$user->desa_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses tidak diizinkan'
+                ], 403);
+            }
+
+            // Validasi request
+            $request->validate([
+                'file' => 'required|file|mimes:pdf,doc,docx,xls,xlsx|max:5120',
+                'bumdes_id' => 'required|integer',
+                'field_name' => 'required|string'
+            ]);
+
+            $bumdesId = $request->input('bumdes_id');
+            $fieldName = $request->input('field_name');
+
+            Log::info("BUMDES Upload validated", [
+                'bumdes_id' => $bumdesId,
+                'field_name' => $fieldName,
+                'desa_id' => $user->desa_id
+            ]);
+
+            // Cek apakah BUMDES milik desa ini
+            $bumdes = Bumdes::where('id', $bumdesId)
+                           ->where('desa_id', $user->desa_id)
+                           ->first();
+
+            if (!$bumdes) {
+                Log::warning("BUMDES not found", [
+                    'bumdes_id' => $bumdesId,
+                    'desa_id' => $user->desa_id
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data BUMDES tidak ditemukan'
+                ], 404);
+            }
+
+            // Upload file menggunakan uploadFileIndividual
+            $currentFilePath = $bumdes->$fieldName;
+            
+            Log::info("BUMDES Before upload", [
+                'bumdes_id' => $bumdes->id,
+                'field_name' => $fieldName,
+                'current_file_path' => $currentFilePath
+            ]);
+            
+            $newFilePath = $this->uploadFileIndividual($request->file('file'), $fieldName, $currentFilePath);
+            
+            Log::info("BUMDES After upload", [
+                'new_file_path' => $newFilePath,
+                'success' => !empty($newFilePath)
+            ]);
+            
+            if ($newFilePath) {
+                // Update field di database
+                $bumdes->$fieldName = $newFilePath;
+                $bumdes->save();
+
+                Log::info("BUMDES File path saved to database", [
+                    'bumdes_id' => $bumdes->id,
+                    'field_name' => $fieldName,
+                    'file_path' => $newFilePath
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'File berhasil diupload',
+                    'data' => [
+                        'field_name' => $fieldName,
+                        'file_path' => $newFilePath
+                    ]
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal mengupload file'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error uploading BUMDES file: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengupload file: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -1924,6 +2313,7 @@ class BumdesController extends Controller
 
     /**
      * Get produk hukum yang relevan untuk BUMDES (PERDES dan SK)
+     * Menampilkan SEMUA Perdes dan SK Kades dari desa yang login
      */
     public function getProdukHukumForBumdes(Request $request)
     {
@@ -1932,46 +2322,67 @@ class BumdesController extends Controller
             
             // Pastikan user adalah desa
             if ($user->role !== 'desa' || !$user->desa_id) {
+                Log::warning('Akses getProdukHukumForBumdes ditolak', [
+                    'user_role' => $user->role ?? 'null',
+                    'desa_id' => $user->desa_id ?? 'null'
+                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Akses tidak diizinkan'
                 ], 403);
             }
 
-            // Ambil produk hukum desa yang relevan untuk BUMDES
+            // Log untuk debugging
+            Log::info('Fetching Produk Hukum for BUMDES', [
+                'desa_id' => $user->desa_id,
+                'user_id' => $user->id,
+                'desa_nama' => $user->desa->nama ?? 'unknown'
+            ]);
+
+            // Ambil SEMUA Perdes dan SK Kades dari desa ini
+            // Tidak perlu filter kata kunci karena user bisa pilih sendiri yang relevan dengan BUMDES
             $produkHukum = \App\Models\ProdukHukum::where('desa_id', $user->desa_id)
-                ->where(function($query) {
-                    // PERDES (Peraturan Desa)
-                    $query->where('jenis', 'Peraturan Desa')
-                          ->where(function($subQuery) {
-                              $subQuery->where('judul', 'like', '%bumdes%')
-                                       ->orWhere('judul', 'like', '%badan usaha milik desa%')
-                                       ->orWhere('subjek', 'like', '%bumdes%')
-                                       ->orWhere('subjek', 'like', '%badan usaha milik desa%');
-                          });
-                })
-                ->orWhere(function($query) use ($user) {
-                    // SK (Surat Keputusan)
-                    $query->where('desa_id', $user->desa_id)
-                          ->where('jenis', 'Keputusan Kepala Desa')
-                          ->where(function($subQuery) {
-                              $subQuery->where('judul', 'like', '%bumdes%')
-                                       ->orWhere('judul', 'like', '%badan usaha milik desa%')
-                                       ->orWhere('judul', 'like', '%pembentukan%')
-                                       ->orWhere('subjek', 'like', '%bumdes%')
-                                       ->orWhere('subjek', 'like', '%badan usaha milik desa%');
-                          });
-                })
+                ->whereIn('jenis', ['Peraturan Desa', 'Keputusan Kepala Desa'])
                 ->select('id', 'judul', 'nomor', 'tahun', 'jenis', 'singkatan_jenis', 'tanggal_penetapan', 'file')
+                ->orderBy('tanggal_penetapan', 'desc')
                 ->orderBy('created_at', 'desc')
                 ->get();
+            
+            // Log hasil query
+            Log::info('Produk Hukum Query Result', [
+                'total_found' => $produkHukum->count(),
+                'desa_id_filter' => $user->desa_id,
+                'items' => $produkHukum->toArray()
+            ]);
+
+            // Pisahkan berdasarkan jenis untuk kemudahan di frontend
+            $perdes = $produkHukum->where('jenis', 'Peraturan Desa')->values();
+            $skKades = $produkHukum->where('jenis', 'Keputusan Kepala Desa')->values();
+
+            // Log final result
+            Log::info('Produk Hukum Response Prepared', [
+                'perdes_count' => $perdes->count(),
+                'sk_count' => $skKades->count()
+            ]);
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'perdes' => $produkHukum->where('jenis', 'Peraturan Desa')->values(),
-                    'sk_bumdes' => $produkHukum->where('jenis', 'Keputusan Kepala Desa')->values(),
+                    'perdes' => $perdes,
+                    'sk_bumdes' => $skKades,
+                    'sk' => $skKades, // Alias untuk compatibility
                     'all' => $produkHukum
+                ],
+                'message' => 'Data produk hukum berhasil diambil',
+                'summary' => [
+                    'total' => $produkHukum->count(),
+                    'perdes_count' => $perdes->count(),
+                    'sk_count' => $skKades->count()
+                ],
+                'debug' => [
+                    'desa_id' => $user->desa_id,
+                    'desa_nama' => $user->desa->nama ?? 'unknown',
+                    'query_filter' => 'whereIn jenis: Peraturan Desa, Keputusan Kepala Desa'
                 ]
             ]);
 
@@ -1979,8 +2390,73 @@ class BumdesController extends Controller
             Log::error('Error getting produk hukum for BUMDES: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan saat mengambil data produk hukum'
+                'message' => 'Terjadi kesalahan saat mengambil data produk hukum: ' . $e->getMessage()
             ], 500);
         }
     }
+
+    /**
+     * Helper untuk upload file individual
+     */
+    private function uploadFileIndividual($file, $fileKey, $currentFilePath = null)
+    {
+        Log::info("=== uploadFileIndividual START ===", [
+            'file_key' => $fileKey,
+            'current_file_path' => $currentFilePath,
+            'file_name' => $file->getClientOriginalName(),
+            'file_size' => $file->getSize(),
+            'mime_type' => $file->getMimeType()
+        ]);
+
+        // Tentukan folder berdasarkan jenis file
+        $laporanKeuanganFields = ['LaporanKeuangan2021', 'LaporanKeuangan2022', 'LaporanKeuangan2023', 'LaporanKeuangan2024'];
+        $dokumenBadanHukumFields = ['Perdes', 'ProfilBUMDesa', 'BeritaAcara', 'AnggaranDasar', 'AnggaranRumahTangga', 'ProgramKerja', 'SK_BUM_Desa'];
+        
+        $folder = 'bumdes';
+        if (in_array($fileKey, $laporanKeuanganFields)) {
+            $folder = 'bumdes_laporan_keuangan';
+        } elseif (in_array($fileKey, $dokumenBadanHukumFields)) {
+            $folder = 'bumdes_dokumen_badanhukum';
+        }
+
+        Log::info("uploadFileIndividual - Folder determined", [
+            'folder' => $folder,
+            'file_key' => $fileKey
+        ]);
+
+        // Hapus file lama jika ada
+        if ($currentFilePath && Storage::exists('uploads/' . $currentFilePath)) {
+            Storage::delete('uploads/' . $currentFilePath);
+            Log::info("uploadFileIndividual - Old file deleted", ['path' => $currentFilePath]);
+        }
+
+        // Simpan file baru
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $storagePath = storage_path("app/uploads/{$folder}");
+        
+        Log::info("uploadFileIndividual - Storage path", [
+            'storage_path' => $storagePath,
+            'filename' => $filename,
+            'full_path' => $storagePath . '/' . $filename
+        ]);
+        
+        if (!file_exists($storagePath)) {
+            mkdir($storagePath, 0755, true);
+            Log::info("uploadFileIndividual - Directory created", ['path' => $storagePath]);
+        }
+        
+        $file->move($storagePath, $filename);
+        
+        $finalPath = "{$folder}/{$filename}";
+        $fileExists = file_exists($storagePath . '/' . $filename);
+        
+        Log::info("=== uploadFileIndividual END ===", [
+            'final_path' => $finalPath,
+            'file_exists' => $fileExists,
+            'full_file_path' => $storagePath . '/' . $filename
+        ]);
+        
+        return $finalPath;
+    }
+
 }
