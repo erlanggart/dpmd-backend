@@ -29,7 +29,10 @@ use App\Http\Controllers\Api\Perjadin\KegiatanController as PerjadinKegiatanCont
 use App\Http\Controllers\Api\Perjadin\DashboardController as PerjadinDashboardController;
 use App\Http\Controllers\Api\Perjadin\BidangController as PerjadinBidangController;
 use App\Http\Controllers\Api\Perjadin\PersonilController as PerjadinPersonilController;
+use App\Http\Controllers\Api\Admin\AdminProdukHukumController;
+use App\Http\Controllers\Api\Admin\AdminProfilDesaController;
 use App\Http\Controllers\Api\Perjadin\StatistikController as PerjadinStatistikController;
+use App\Http\Controllers\Api\ModuleSettingController;
 use App\Http\Controllers\DesaController;
 use App\Models\Kecamatan;
 use App\Models\Desa;
@@ -75,6 +78,14 @@ Route::middleware(['auth:sanctum', 'role:superadmin|sekretariat|sarana_prasarana
     // Admin routes untuk pengurus
     Route::get('/admin/pengurus/by-kelembagaan', [GlobalKelembagaanController::class, 'getPengurusByKelembagaan']);
     Route::get('/admin/pengurus/history', [GlobalKelembagaanController::class, 'getPengurusHistory']);
+    
+    // Admin routes untuk produk hukum
+    Route::get('/admin/produk-hukum', [AdminProdukHukumController::class, 'index'])->name('admin.produk-hukum.index');
+    
+    // Admin routes untuk profil desa
+    Route::get('/admin/profil-desa', [AdminProfilDesaController::class, 'index'])->name('admin.profil-desa.index');
+    Route::get('/admin/profil-desa/{desaId}', [AdminProfilDesaController::class, 'show'])->name('admin.profil-desa.show');
+    Route::post('/admin/profil-desa/{desaId}/toggle-verification', [AdminProfilDesaController::class, 'toggleVerification'])->name('admin.profil-desa.toggle-verification');
     Route::get('/admin/pengurus/{id}', [GlobalKelembagaanController::class, 'showPengurus']);
 
     // Route untuk data desa - moved to avoid conflicts with /desa/rw pattern
@@ -90,8 +101,18 @@ Route::middleware(['auth:sanctum', 'role:superadmin'])->group(function () {
 
     // Routes untuk CRUD Bidang & Dinas
     Route::apiResource('/bidangs', BidangController::class)->only(['index', 'store']);
-    Route::apiResource('/dinas', DinasController::class)->only(['index', 'store']);
-}); // <-- Missing closing brace for previous middleware group
+    Route::apiResource('/dinas', DinasController::class)->only(['index', 'store']);    // Module Settings Routes (Superadmin only for management)
+    Route::get('/module-settings', [ModuleSettingController::class, 'index']);
+    Route::put('/module-settings/{id}/toggle', [ModuleSettingController::class, 'toggle']);
+    Route::put('/module-settings/{id}', [ModuleSettingController::class, 'update']);
+    Route::get('/module-settings/{id}', [ModuleSettingController::class, 'show']);
+});
+
+// Module Settings - Get enabled modules (untuk semua authenticated users)
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/module-settings/enabled', [ModuleSettingController::class, 'getEnabled']);
+    Route::get('/module-settings/check/{moduleName}', [ModuleSettingController::class, 'show']);
+});
 
 Route::middleware(['auth:sanctum', 'role:desa|superadmin|sekretariat|sarana_prasarana|kekayaan_keuangan|pemberdayaan_masyarakat|pemerintahan_desa'])->group(function () {
     Route::get('/dashboard/desa', [DashboardController::class, 'desaDashboardData']);
@@ -106,6 +127,9 @@ Route::get('/products', [ProductController::class, 'index']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/login/bidang', [AuthController::class, 'loginBidang']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+
+// Toggle bidang open/closed - authorization checked in controller (superadmin or bidang admin)
+Route::put('/bidangs/{id}/toggle-open', [BidangController::class, 'toggleOpen'])->middleware('auth:sanctum');
 
 // Admin verification endpoint for secure delete operations
 Route::post('/admin/verify-login', [AuthController::class, 'verifyAdminLogin']);
@@ -315,48 +339,81 @@ Route::get('/test-storage', function () {
 
 Route::middleware(['auth:sanctum', 'role:desa|superadmin'])->prefix('desa')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
-    Route::apiResource('/profil-desa', ProfilDesaController::class)->only(['index', 'store']);
-    Route::apiResource('/produk-hukum', ProdukHukumController::class);
-    Route::post('/produk-hukum/{id}', [ProdukHukumController::class, 'update']);
-    Route::put('/produk-hukum/status/{id}', [ProdukHukumController::class, 'updateStatus']);
-    Route::apiResource('/aparatur-desa', AparaturDesaController::class);
-    Route::post('/aparatur-desa/{id}', [AparaturDesaController::class, 'update']);
+    
+    // Profil Desa - with module check
+    Route::middleware(['module.enabled:profil_desa'])->group(function () {
+        Route::apiResource('/profil-desa', ProfilDesaController::class)->only(['index', 'store']);
+    });
+    
+    // Produk Hukum - with module check
+    Route::middleware(['module.enabled:produk_hukum'])->group(function () {
+        Route::apiResource('/produk-hukum', ProdukHukumController::class);
+        Route::post('/produk-hukum/{id}', [ProdukHukumController::class, 'update']);
+        Route::put('/produk-hukum/status/{id}', [ProdukHukumController::class, 'updateStatus']);
+    });
+    
+    // Aparatur Desa - with module check
+    Route::middleware(['module.enabled:aparatur_desa'])->group(function () {
+        Route::apiResource('/aparatur-desa', AparaturDesaController::class);
+        Route::post('/aparatur-desa/{id}', [AparaturDesaController::class, 'update']);
+    });
 
-    // Kelembagaan Desa: Summary & Counts
-    Route::get('/kelembagaan/summary', [KelembagaanController::class, 'getSummary']);
-    Route::get('/kelembagaan/detailed-summary', [KelembagaanController::class, 'getDetailedSummary']);
+    // Kelembagaan Desa - with module check
+    Route::middleware(['module.enabled:kelembagaan'])->group(function () {
+        // Summary & Counts
+        Route::get('/kelembagaan/summary', [KelembagaanController::class, 'getSummary']);
+        Route::get('/kelembagaan/detailed-summary', [KelembagaanController::class, 'getDetailedSummary']);
 
-    // Kelembagaan Desa: RW, RT, dan Pengurus (polymorphic) - CRUD operations
-    Route::apiResource('/rw', RwController::class);
-    Route::apiResource('/rt', RtController::class);
+        // RW, RT, dan Pengurus (polymorphic) - CRUD operations
+        Route::apiResource('/rw', RwController::class);
+        Route::apiResource('/rt', RtController::class);
 
-    // Toggle routes untuk status dan verifikasi kelembagaan
-    Route::put('/rw/{id}/toggle-status', [RwController::class, 'toggleStatus']);
-    Route::put('/rw/{id}/toggle-verification', [RwController::class, 'toggleVerification']);
-    Route::put('/rt/{id}/toggle-status', [RtController::class, 'toggleStatus']);
-    Route::put('/rt/{id}/toggle-verification', [RtController::class, 'toggleVerification']);
-    Route::put('/posyandu/{id}/toggle-status', [PosyanduController::class, 'toggleStatus']);
-    Route::put('/posyandu/{id}/toggle-verification', [PosyanduController::class, 'toggleVerification']);
-    Route::put('/karang-taruna/{id}/toggle-status', [KarangTarunaController::class, 'toggleStatus']);
-    Route::put('/karang-taruna/{id}/toggle-verification', [KarangTarunaController::class, 'toggleVerification']);
-    Route::put('/lpm/{id}/toggle-status', [LpmController::class, 'toggleStatus']);
-    Route::put('/lpm/{id}/toggle-verification', [LpmController::class, 'toggleVerification']);
-    Route::put('/pkk/{id}/toggle-status', [PkkController::class, 'toggleStatus']);
-    Route::put('/pkk/{id}/toggle-verification', [PkkController::class, 'toggleVerification']);
-    Route::put('/satlinmas/{id}/toggle-status', [SatlinmasController::class, 'toggleStatus']);
-    Route::put('/satlinmas/{id}/toggle-verification', [SatlinmasController::class, 'toggleVerification']);
+        // Toggle routes untuk status dan verifikasi kelembagaan
+        Route::put('/rw/{id}/toggle-status', [RwController::class, 'toggleStatus']);
+        Route::put('/rw/{id}/toggle-verification', [RwController::class, 'toggleVerification']);
+        Route::put('/rt/{id}/toggle-status', [RtController::class, 'toggleStatus']);
+        Route::put('/rt/{id}/toggle-verification', [RtController::class, 'toggleVerification']);
+        Route::put('/posyandu/{id}/toggle-status', [PosyanduController::class, 'toggleStatus']);
+        Route::put('/posyandu/{id}/toggle-verification', [PosyanduController::class, 'toggleVerification']);
+        Route::put('/karang-taruna/{id}/toggle-status', [KarangTarunaController::class, 'toggleStatus']);
+        Route::put('/karang-taruna/{id}/toggle-verification', [KarangTarunaController::class, 'toggleVerification']);
+        Route::put('/lpm/{id}/toggle-status', [LpmController::class, 'toggleStatus']);
+        Route::put('/lpm/{id}/toggle-verification', [LpmController::class, 'toggleVerification']);
+        Route::put('/pkk/{id}/toggle-status', [PkkController::class, 'toggleStatus']);
+        Route::put('/pkk/{id}/toggle-verification', [PkkController::class, 'toggleVerification']);
+        Route::put('/satlinmas/{id}/toggle-status', [SatlinmasController::class, 'toggleStatus']);
+        Route::put('/satlinmas/{id}/toggle-verification', [SatlinmasController::class, 'toggleVerification']);
 
-    // Pengurus routes
-    Route::get('/pengurus/by-kelembagaan', [PengurusController::class, 'byKelembagaan']);
-    Route::get('/pengurus/history', [PengurusController::class, 'history']);
-    Route::put('/pengurus/{id}/status', [PengurusController::class, 'updateStatus']);
-    Route::apiResource('/pengurus', PengurusController::class)->except(['destroy']);
+        // Pengurus routes
+        Route::get('/pengurus/by-kelembagaan', [PengurusController::class, 'byKelembagaan']);
+        Route::get('/pengurus/history', [PengurusController::class, 'history']);
+        Route::put('/pengurus/{id}/status', [PengurusController::class, 'updateStatus']);
+        Route::apiResource('/pengurus', PengurusController::class)->except(['destroy']);
 
+<<<<<<< Updated upstream
     Route::apiResource('/posyandu', PosyanduController::class)->except(['show']);
     Route::apiResource('/karang-taruna', KarangTarunaController::class)->except(['show']);
     Route::apiResource('/lpm', LpmController::class)->except(['show']);
     Route::apiResource('/satlinmas', SatlinmasController::class)->except(['show']);
     Route::apiResource('/pkk', PkkController::class)->except(['show']);
+=======
+        Route::apiResource('/posyandu', PosyanduController::class)->except(['show']);
+        Route::apiResource('/karang-taruna', KarangTarunaController::class)->except(['show']);
+        Route::apiResource('/lpm', LpmController::class)->except(['show']);
+        Route::apiResource('/satlinmas', SatlinmasController::class)->except(['show']);
+        Route::apiResource('/pkk', PkkController::class)->except(['show']);
+    });
+
+    // BUMDES - with module check
+    Route::middleware(['module.enabled:bumdes'])->group(function () {
+        Route::get('/bumdes', [BumdesController::class, 'getDesaBumdes']);
+        Route::post('/bumdes', [BumdesController::class, 'storeDesaBumdes']);
+        Route::put('/bumdes/{id}', [BumdesController::class, 'updateDesaBumdes']);
+        Route::delete('/bumdes/{id}', [BumdesController::class, 'deleteDesaBumdes']);
+        Route::get('/bumdes/statistics', [BumdesController::class, 'getDesaBumdesStatistics']);
+        Route::get('/bumdes/produk-hukum', [BumdesController::class, 'getProdukHukumForBumdes']);
+    });
+>>>>>>> Stashed changes
 });
 
 // Routes untuk Musdesus (Public - tidak perlu auth)
